@@ -1,5 +1,6 @@
 let widgetOpen = false;
-const APIURL = "http://localhost:4040/api";
+const socketURL = "http://localhost:4040";
+const APIURL = `${socketURL}/api`;
 
 let main = async () => {
     // Get references to elements
@@ -21,7 +22,7 @@ let main = async () => {
     });
 
     // Initialize the socket connection
-    const socket = io('http://localhost:4040');
+    const socket = io(socketURL);
 
     let uniqueId = localStorage.getItem("unique-id") || "";
 
