@@ -35,7 +35,7 @@ let main = async () => {
         messages.forEach(msg => {
             if (msg.user === "Guest") {
                 const messageElement = document.createElement('div');
-                messageElement.textContent = `${msg.user}: ${msg.message}`;
+                messageElement.textContent = `You: ${msg.message}`;
                 messageElement.style.marginBottom = "5px";
                 chatMessages.appendChild(messageElement);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -129,7 +129,7 @@ let main = async () => {
 
             // Show the message in the chat
             const messageElement = document.createElement('div');
-            messageElement.textContent = 'Guest: ' + message;
+            messageElement.textContent = 'You: ' + message;
             messageElement.style.marginBottom = "5px";
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -153,14 +153,19 @@ let main = async () => {
 
 let div = document.createElement("div");
 div.id = "chat-widget";
-div.innerHTML = "ðŸ’¬";
+div.innerHTML = "💬";
 document.body.append(div);
 
 div = document.createElement("div");
 div.id = "chat-popup";
 div.style = "display: none;";
 div.innerHTML = `
-    <div id="chat-header">Chat with Us</div>
+    <div id="chat-header">
+        Chat with Us
+        <button id="clear-session-button">
+            ❌
+        </button>
+    </div>
     <div id="chat-messages"></div>
     <div id="chat-input-container">
         <input type="text" id="chat-input" placeholder="Type a message..." />
@@ -173,6 +178,11 @@ let script = document.createElement("script");
 script.src = "https://cdn.socket.io/4.0.0/socket.io.min.js";
 script.onload = main;
 document.body.append(script);
+
+const clearSession = document.getElementById("clear-session-button");
+clearSession.addEventListener("click", () => {
+    localStorage.clear();
+});
 
 function getOS() {
     const userAgent = navigator.userAgent;

@@ -37,6 +37,41 @@
     text-align: center;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#chat-header #clear-session-button {
+    background: none;
+    border: none;
+    font-size: 15px;
+    color: #ff0000;
+    cursor: pointer;
+    position: relative;
+}
+
+/* Tooltip bubble */
+#clear-session-button::after {
+    content: "Clear Session";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+}
+
+#clear-session-button:hover::after {
+    opacity: 1;
+    visibility: visible;
 }
 
 #chat-messages {
@@ -59,6 +94,7 @@
     border-radius: 4px;
     border: 1px solid #ddd;
     font-size: 14px;
+    margin-right: 10px;
 }
 
 #send-button {
