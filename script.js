@@ -1,5 +1,5 @@
 let widgetOpen = false;
-const socketURL = "http://localhost:4040";
+const socketURL = "http://localhost:4040"; // Mention socket url in production
 const APIURL = `${socketURL}/api`;
 
 let main = async () => {
