@@ -1,12 +1,20 @@
-// Chat Widget Implementation with proper DOM loading
-
+/**
+ * Chat Widget Implementation with proper DOM loading
+ */
 (function () {
     const config = {
+
+        // Development API
         socketURL: "http://localhost:4040",
         apiURL: "http://localhost:4040/api",
+
+        // Production API
+        // socketURL: "https://socket.novelhouston.com",
+        // apiURL: "https://socket.novelhouston.com/api",
+
         color: '#ffffff',
         backgroundColor: '#39B3BA',
-        title: 'Need help? Start a conversation'
+        title: 'Need help? Start a conversation...'
     };
 
     // Global state variables
@@ -68,7 +76,7 @@
             .chat-button {
                 display: flex;
                 align-items: center;
-                background: ${config.backgroundColor};
+                background-color: ${config.backgroundColor};
                 width: 110px;
                 border-radius: 50px;
                 cursor: pointer;
@@ -99,7 +107,7 @@
                 width: 48px;
                 height: 48px;
                 color: ${config.color};
-                background: rgba(255, 255, 255, 0.2);
+                background-color: rgba(255, 255, 255, 0.2);
                 border-radius: 50%;
             }
 
@@ -110,7 +118,7 @@
                 width: 3px;
                 height: 3px;
                 padding: 6px;
-                background: #34D399;
+                background-color: #34D399;
                 border-radius: 50%;
                 border: 2px solid white;
             }
@@ -142,7 +150,7 @@
 
             .chatbox-header {
                 padding: 10px;
-                background: ${config.backgroundColor};
+                background-color: ${config.backgroundColor};
                 border-radius: 8px 8px 0 0;
             }
 
@@ -167,7 +175,7 @@
             }
 
             .chatbox-header-btn {
-                background: ${config.backgroundColor};
+                background-color: ${config.backgroundColor};
                 color: ${config.color};
                 height: 2rem;
                 width: 2rem;
@@ -177,11 +185,11 @@
                 font-size: 1.125rem;
                 line-height: 1.75rem;
                 cursor: pointer;
-                transition: background 0.2s ease;
+                transition: background-color 0.2s ease;
             }
                 
             .chatbox-header-btn:hover {
-                background: rgb(40 139 145) !important;
+                background-color: #d9d2d269 !important;
             }
             .chatbox-main{
              height: calc(100% - 150px);
@@ -197,6 +205,7 @@
                 margin-bottom: 10px;
                 clear: both;
                 animation: messageSlideIn 0.3s ease;
+                max-width: 80%;
             }
 
             @keyframes messageSlideIn {
@@ -211,22 +220,21 @@
             }
 
             .message-text {
-                padding: 8px;
+                padding: 10px;
                 border-radius: 5px;
                 display: inline-flex;
-                max-width: 80%;
                 line-height: 1.25rem;
                 font-size: 0.875rem;
                 flex-direction: column;
             }
-
+                
             span.message-user {
-                font-size: 11px;
-                font-weight: 700;
+                    font-size: 11px;
+                    font-weight: 700;
             }
-            
+                    
             .message.sent {
-                background: linear-gradient(80deg,${config.backgroundColor},rgb(8, 24, 29) 130%);
+                background: linear-gradient(80deg,${config.backgroundColor},rgb(4, 18, 22) 130%);
                 color: ${config.color};
                 float: right;
                 word-break: break-word;
@@ -234,15 +242,19 @@
                 overflow-wrap: break-word;
                 margin-bottom: 4px;
                 border-radius: 0.5rem;
+                margin-left: auto;
             }
-             .message.received {
+
+            .message.received {
+                background-color: #e0f7fa;
                 color: black;
-                background: #e0f7fa;
                 float: left;
                 word-break: break-word;
                 white-space: pre-wrap;
                 overflow-wrap: break-word;
                 margin-bottom: 4px;
+                border-radius: 0.5rem;
+                margin-right: auto;
             }
 
             /* New chat input styles */
@@ -322,8 +334,8 @@
             }
 
             .send-button:hover {
-                background: ${config.backgroundColor}120;
-                transform: scale(1.1);
+                background: #a8a8a8 !important;
+                transform: scale(1.2);
             }
 
             /* The semi-transparent black overlay behind the options panel */
@@ -438,7 +450,7 @@
                 position: relative;
                 width: 32px;
                 height: 16px;
-                background: #e5e7eb;
+                background-color: #e5e7eb;
                 border-radius: 24px;
                 transition: 0.3s;
                 margin-right: 12px;
@@ -457,7 +469,7 @@
             }
 
             .toggle input:checked + .toggle-slider {
-                background: #39B3BA;
+                background-color: #39B3BA;
             }
 
             .toggle input:checked + .toggle-slider:before {
@@ -465,7 +477,7 @@
             }
 
             .options-action-btn, .color-picker-container, .toggle-container {
-                transition: background 0.2s ease;
+                transition: background-color 0.2s ease;
             }
 
             .options-action-btn {
@@ -506,7 +518,7 @@
             }
             
             .save-button {
-                background: ${config.backgroundColor};
+                background-color: ${config.backgroundColor};
             }
 
             @media screen and (max-width: 768px) {
@@ -573,7 +585,7 @@
     .form-group label {
         display: block;
         margin-bottom: 5px;
-        color: #666;
+        color: #000;
         font-size: 14px;
     }
 
@@ -586,10 +598,27 @@
         box-sizing: border-box;
     }
 
+    #contact-name-label:after{
+        content: " *";
+        color: red;
+    }
+
     .form-group input:focus {
         outline: none;
         border-color: ${config.backgroundColor};
         box-shadow: 0 0 0 2px ${config.backgroundColor}20;
+    }
+    
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    /* Firefox */
+    input[type=number] {
+        -moz-appearance: textfield;
     }
 
     .form-buttons {
@@ -609,12 +638,12 @@
 }
 
     .form-submit {
-    background: ${config.backgroundColor};
+    background-color: ${config.backgroundColor};
     color: ${config.color};
 }
 
 .form-skip {
-    background: #f5f5f5;
+    background-color: #f5f5f5;
     color: #666;
 }
 
@@ -725,7 +754,7 @@
                     <div class="chatbox-content"></div>
                     <div class="chatbox-input">
                         <input type="text" placeholder="Type your message here">
-                        <button class="send-button"><svg width="1.2em" height="1.2em" viewBox="0 0 209 209" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" fill-rule="evenodd" clip-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"><path d="M177.954,104.163l-110.066,-0m110.066,-0l-138.95,69.4l28.884,-69.4l-28.884,-69.584l138.95,69.584Z" style="fill:none;fill-rule:nonzero;stroke:currentColor;stroke-width:17.38px;"></path></svg></button>
+                        <button class="send-button"><svg width="1.4em" height="1.4em" viewBox="0 0 209 209" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" fill-rule="evenodd" clip-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"><path d="M177.954,104.163l-110.066,-0m110.066,-0l-138.95,69.4l28.884,-69.4l-28.884,-69.584l138.95,69.584Z" style="fill:none;fill-rule:nonzero;stroke:currentColor;stroke-width:17.38px;"></path></svg></button>
                     </div>
                     <div class="chatbox-footer">
                         <div class="chatbox-footer-1">
@@ -803,21 +832,20 @@
                 </div>
                 <div class="contact-form-overlay">
                 <div class="contact-form">
-                    <h3>Please share your details</h3>
+                    <h3>Kindly Introduce Yourself...!</h3>
                     <div class="form-group">
-                        <label for="contact-name">Name</label>
-                        <input type="text" id="contact-name" placeholder="Enter your name" required>
+                        <label for="contact-name" id="contact-name-label">Name</label>
+                        <input type="text" id="contact-name" placeholder="Enter your name" required pattern="[A-Za-z ]+">
                     </div>
                     <div class="form-group">
                         <label for="contact-email">Email</label>
-                        <input type="email" id="contact-email" placeholder="Enter your email" required>
+                        <input type="email" id="contact-email" placeholder="email@example.com">
                     </div>
                     <div class="form-group">
                         <label for="contact-phone">Phone</label>
-                        <input type="tel" id="contact-phone" placeholder="Enter your phone number" required>
+                        <input type="number" id="contact-phone" placeholder="1234567890" min="1000000000" max="9999999999">
                     </div>
                     <div class="form-buttons">
-                        <button class="form-skip">Skip</button>
                         <button class="form-submit">Submit</button>
                     </div>
                 </div>
@@ -968,18 +996,15 @@
 
         function updateBgColor(color) {
             const elementsToUpdate = document.querySelectorAll(
-                '.chat-button, .chatbox-header, .chatbox-header-btn, .send-button, .save-button, .icon'
+                '.chat-button, .chatbox-header, .chatbox-header-btn, .send-button, .save-button, .icon,.message.sent'
             );
-        
-            const elementsToUpdate2 = document.querySelectorAll('.message.sent');
-        
-            elementsToUpdate.forEach(el => el.style.background = color);
-        
-            if (elementsToUpdate2.length > 0) {
-                elementsToUpdate2.forEach(el => el.style.background = `linear-gradient(80deg,${color},rgb(4, 18, 22) 130%)`);
-            }
+            elementsToUpdate.forEach(el => el.style.backgroundColor = color);
+
+            const sentMessages = document.querySelectorAll('.message.sent');
+            sentMessages.forEach(msg => {
+                msg.style.background = `linear-gradient(80deg, ${color}, rgb(4, 18, 22) 130%)`;
+            });
         }
-        
 
         function updateColor(color) {
             const elementsToUpdate = document.querySelectorAll(
@@ -1077,9 +1102,11 @@
             messageDiv.className = `message ${type}`;
             let displayText;
             if (type === 'sent') {
-                displayText = `<span class="message-user">You:</span> ${text}`;
+                displayText = `${text}`;
+                const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
+                messageDiv.style.background = `linear-gradient(80deg, ${savedColor}, rgb(4, 18, 22) 130%)`;
             } else if (type === 'received') {
-                displayText = `<span class="message-user">${username}:</span> ${text}`;
+                displayText = `<span class="message-user">${username}</span> ${text}`;
             } else {
                 displayText = text;
             }
@@ -1253,9 +1280,11 @@
         messageDiv.className = `message ${type}`;
         let displayText;
         if (type === 'sent') {
-            displayText = `<span class="message-user">You:</span> ${text}`;
+            displayText = `${text}`;
+            const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
+            messageDiv.style.background = `linear-gradient(80deg, ${savedColor}, rgb(4, 18, 22) 130%)`;
         } else if (type === 'received') {
-            displayText = `<span class="message-user">${username}:</span> ${text}`;
+            displayText = `<span class="message-user">${username}</span> ${text}`;
         } else {
             displayText = text;
         }
@@ -1315,13 +1344,33 @@
             }, 300);
         };
 
+        // Update checkFields to only show submit button when name is filled
         function checkFields() {
-            const hasValue = nameInput.value.trim() || emailInput.value.trim() || phoneInput.value.trim();
-            submitButton.style.transform = hasValue ? 'scale(1)' : 'scale(0)';
+            const nameValue = nameInput.value.trim();
+            const isValidName = /^[A-Za-z ]+$/.test(nameValue);
+            submitButton.style.transform = (nameValue && isValidName) ? 'scale(1)' : 'scale(0)';
         }
+
+        // Add input validation for name field
+        nameInput.addEventListener('input', (e) => {
+            const value = e.target.value;
+            // Remove any non-alphabetic characters
+            const sanitizedValue = value.replace(/[^A-Za-z ]/g, '');
+            if (value !== sanitizedValue) {
+                e.target.value = sanitizedValue;
+            }
+            checkFields();
+        });
 
         async function handleFormSubmit() {
             const name = nameInput.value.trim();
+
+            // Validate name before submission
+            if (!name || !/^[A-Za-z ]+$/.test(name)) {
+                alert('Please enter a valid name (alphabets only)');
+                return;
+            }
+
             const email = emailInput.value.trim();
             const phone = phoneInput.value.trim();
 
@@ -1333,7 +1382,7 @@
                     },
                     body: JSON.stringify({
                         sessionID: uniqueId,
-                        name: name || null,
+                        name: name,
                         email: email || null,
                         phone: phone || null
                     })
@@ -1351,19 +1400,14 @@
             }
         }
 
-        function handleFormSkip() {
-            localStorage.setItem('contact-form-shown', 'true');
-            hideContactForm();
-        }
-
-        // Add input event listeners to all fields
+        // Add input event listeners
         nameInput.addEventListener('input', checkFields);
         emailInput.addEventListener('input', checkFields);
         phoneInput.addEventListener('input', checkFields);
 
         submitButton.addEventListener('click', handleFormSubmit);
-        skipButton.addEventListener('click', handleFormSkip);
     }
+
 
     // ------------- MAIN ENTRY POINTS -------------
     // Wait for DOM to be ready
