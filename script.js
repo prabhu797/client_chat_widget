@@ -1143,6 +1143,7 @@
 
         // Show/hide the "Send" button based on input
         input.addEventListener('input', function () {
+            socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: this.value });
             if (this.value.trim()) {
                 sendButton.classList.add('visible');
                 chatBubbleWidth.style.width = '97%';
@@ -1199,6 +1200,18 @@
                     const notificationSound = new Audio('https://rajkumarmalluri.vercel.app/images/pyk-toon-n-n.mp3');
                     notificationSound.play().catch(err => console.log('Error playing sound:', err));
                 }
+            });
+
+            socket.on('agentTyping', (data) => {
+                console.log('Agent is typing:', data);
+            });
+
+            socket.on('agentJoined', (data) => {
+                console.log('Agent joined:', data);
+            });
+
+            socket.on('agentLeft', (data) => {
+                console.log('Agent left:', data);
             });
 
             // If no uniqueId, let's create a new session
