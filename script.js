@@ -5,16 +5,22 @@
     const config = {
 
         // Development API
-        socketURL: "http://localhost:4040",
-        apiURL: "http://localhost:4040/api",
+        // socketURL: "http://localhost:4040",
+        // apiURL: "http://localhost:4040/api",
 
         // Production API
-        // socketURL: "https://socket.novelhouston.com",
-        // apiURL: "https://socket.novelhouston.com/api",
+        socketURL: "https://socket.novelhouston.com",
+        apiURL: "https://socket.novelhouston.com/api",
 
         color: '#ffffff',
         backgroundColor: '#39B3BA',
-        title: 'Need help? Start a conversation...'
+        title: 'Need help? Start a conversation...',
+
+        notifications: {
+            title: "New Message",
+            icon: "https://noveloffice.in/wp-content/uploads/2023/08/novel-favicon.webp",
+            timeout: 5000  // How long notification stays visible (ms)
+        }
     };
 
     // Global state variables
@@ -675,6 +681,38 @@
     box-shadow: none;
 }
 
+.unread-badge {
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                background-color: #EF4444;
+                color: white;
+                border-radius: 50%;
+                min-width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: bold;
+                border: 2px solid white;
+                animation: pulse 2s infinite;
+            }
+
+            @keyframes pulse {
+                0% {
+                    transform: scale(1);
+                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+                }
+                70% {
+                    transform: scale(1.1);
+                    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+                }
+                100% {
+                    transform: scale(1);
+                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+                }
+            }
 
         `;
         document.head.appendChild(style);
