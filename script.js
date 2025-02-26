@@ -29,6 +29,21 @@
     let showContactForm;
     let hideContactForm;
 
+    let unreadCount = 0; // Track unread messages
+    let notificationSound = new Audio('https://noveloffice.in/wp-content/uploads/2025/02/new_notification.mp3');
+
+    let notificationPermission = Notification.permission;
+    let activeNotifications = [];
+    let storedSettings = {
+        widgetBackground: localStorage.getItem('chatWidgetBackground') || '#39B3BA',
+        widgetColor: localStorage.getItem('chatWidgetColor') || '#ffffff',
+        soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+    };
+
+    let username;
+    let message;
+
+
     /**
      * Injects the Google Fonts
      */
@@ -669,7 +684,6 @@
      * Creates the main widget HTML that will be injected into the DOM.
      */
     function createWidgetHTML() {
-
         return `
             <div class="chat-button">
                 <div class="widget-button-text">Chat</div>
@@ -680,6 +694,7 @@
                         </svg>
                     </div>
                     <div class="widget-online-badge"></div>
+                    <div class="unread-badge" style="display: none;">0</div>
                 </div>
             </div>
             <div class="chatbox">
@@ -801,6 +816,18 @@
                             </div>
 
                             <div class="options-section">
+                                <div class="toggle-container">
+                                    <label class="toggle">
+                                        <input type="checkbox" id="notification-toggle" 
+                                            ${notificationPermission === 'granted' ? 'checked' : ''}
+                                            ${notificationPermission === 'denied' ? 'disabled' : ''}>
+                                            <span class="toggle-slider"></span>
+                                            <span class="toggle-label">Browser notifications</span>
+                                        </label>
+                                </div>
+                            </div>        
+
+                            <div class="options-section">
                                 <button class="options-action-btn download-transcript disabled" disabled>
                                     <svg viewBox="0 0 24 24" width="20" height="20">
                                         <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -919,6 +946,118 @@
     }
 
     /**
+     * Play a notification sound if sound is enabled.
+     */
+    function playNotificationSound() {
+        if (localStorage.getItem('soundEnabled') === 'true') {
+            notificationSound.play().catch(err => console.log('Error playing sound:', err));
+        }
+    }
+
+    /**
+     * Update the unread badge count.
+     */
+    function updateUnreadBadge() {
+        const unreadBadge = document.querySelector('.unread-badge');
+        if (unreadCount > 0) {
+            unreadBadge.style.display = 'flex';
+            unreadBadge.textContent = unreadCount;
+        } else {
+            unreadBadge.style.display = 'none';
+        }
+    }
+
+
+    /**
+    * Request notification permission and store the result
+    */
+    async function requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            console.log('This browser does not support notifications');
+            return;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            notificationPermission = permission;
+
+            // Store the permission in localStorage to remember user's choice
+            localStorage.setItem('notificationPermission', permission);
+
+            // Update the toggle in settings if it exists
+            const notificationToggle = document.getElementById('notification-toggle');
+            if (notificationToggle) {
+                notificationToggle.checked = permission === 'granted';
+                notificationToggle.disabled = permission === 'denied';
+            }
+        } catch (error) {
+            console.error('Error requesting notification permission:', error);
+        }
+    }
+
+    /**
+     * Show a browser notification
+     */
+    function showNotification(message, username) {
+
+
+        console.log("Attempting to show notification:", message, username); // Debug log
+
+        if (!('Notification' in window)) {
+            console.log('This browser does not support notifications');
+            return;
+        }
+
+        if (document.hidden || !document.querySelector('.chatbox').classList.contains('visible')) {
+            console.log("Creating browser notification..."); // Debug log
+            createAndShowNotification(message, username);
+        } else {
+            console.log("Notification not shown because chat is visible");
+        }
+
+
+
+        // Check if notifications are supported
+        if (!('Notification' in window)) {
+            console.log('This browser does not support notifications');
+            return;
+        }
+
+        // Don't show notification if chat is visible
+        const chatbox = document.querySelector('.chatbox');
+        if (
+            document.hidden === false ||
+            (chatbox && getComputedStyle(chatbox).display !== 'none')
+        ) {
+            return;
+        }
+
+        // If permission is not granted, request it first
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(function (permission) {
+                if (permission === 'granted') {
+                    createAndShowNotification(message, username);
+                }
+            });
+        } else if (Notification.permission === 'granted') {
+            createAndShowNotification(message, username);
+        }
+    }
+
+    /** 
+     * Add this to your initializeWidget function
+     */
+    function addNotificationToggle() {
+        // Add event listener for the toggle
+        const notificationToggle = document.getElementById('notification-toggle');
+        notificationToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                requestNotificationPermission();
+            }
+        });
+    }
+
+    /**
      * Initialize the entire chat widget once the DOM is ready.
      */
     function initializeWidget() {
@@ -926,6 +1065,21 @@
         container.className = 'chat-widget-container';
         container.innerHTML = createWidgetHTML();
         document.body.appendChild(container);
+
+        // --- SOUND TOGGLE ---
+        const soundToggle = document.getElementById('sound-toggle');
+        const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+        soundToggle.checked = soundEnabled;
+        localStorage.setItem('soundEnabled', soundEnabled);
+
+        soundToggle.addEventListener('change', (e) => {
+            localStorage.setItem('soundEnabled', e.target.checked);
+            // Play sound to give feedback when enabled
+            if (e.target.checked) {
+                playNotificationSound();
+            }
+        });
+
 
         // DOM Elements
         const chatButton = container.querySelector('.chat-button');
@@ -946,7 +1100,6 @@
         const widgetTextColorPicker = document.getElementById('bg-color-picker');
         const saveButton = document.querySelector('.save-button');
         const resetThemeButton = document.querySelector('.reset-button');
-        const soundToggle = document.getElementById('sound-toggle');
         const downloadTranscriptBtn = document.querySelector('.download-transcript');
 
         let newWidgetBg = widgetBgColorPicker.value;
@@ -1015,14 +1168,24 @@
 
         loadSettings(); // load theme on startup
 
+        //
+        function scrollToBottom() {
+            const messagesContainer = document.querySelector('.chatbox-content');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
         // --- WIDGET TOGGLE / EXPAND / CLOSE ---
         function toggleChatbox() {
             const formShown = localStorage.getItem('contact-form-shown');
 
             if (chatbox.style.display === 'none' || !chatbox.style.display) {
                 chatbox.style.display = 'block';
+                unreadCount = 0;  // Reset unread count
+                updateUnreadBadge();
                 setTimeout(() => {
                     chatbox.classList.add('visible');
+                    scrollToBottom();
                     // Show form only if it hasn't been shown before
                     if (!formShown && showContactForm) {  // Check if function exists
                         showContactForm();
@@ -1076,6 +1239,10 @@
         // --- SOUND TOGGLE ---
         soundToggle.addEventListener('change', (e) => {
             localStorage.setItem('soundEnabled', e.target.checked);
+            // Play sound to give feedback when enabled
+            if (e.target.checked) {
+                playNotificationSound();
+            }
         });
 
         // --- DOWNLOAD TRANSCRIPT ---
@@ -1133,17 +1300,16 @@
             chatBubbleWidth.style.width = '105%';
 
             // If socket is connected, send it immediately
-            if (socket && socket.connected && uniqueId) {
+            if (socket && socket.connected) {
                 socket.emit('sendMessage', { msg: message, room: uniqueId, username: "Guest" });
             } else {
-                // Otherwise, queue for later
                 pendingMessages.push(message);
+                localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
             }
         }
 
         // Show/hide the "Send" button based on input
         input.addEventListener('input', function () {
-            socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: this.value });
             if (this.value.trim()) {
                 sendButton.classList.add('visible');
                 chatBubbleWidth.style.width = '97%';
@@ -1154,7 +1320,7 @@
         });
 
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
@@ -1179,26 +1345,33 @@
                 }
 
                 // Send any messages that were queued while offline
-                if (pendingMessages.length > 0 && uniqueId) {
-                    console.log('Sending pending messages:', pendingMessages);
-                    pendingMessages.forEach(msg => {
-                        socket.emit('sendMessage', { msg, room: uniqueId, username: "Guest" });
-                    });
+                if (pendingMessages.length > 0) {
+                    pendingMessages.forEach(msg => socket.emit('sendMessage', { msg, room: uniqueId, username: "Guest" }));
+                    localStorage.removeItem('pendingMessages');
                     pendingMessages = [];
                 }
             });
 
             socket.on('disconnect', () => {
-                console.log('Socket disconnected');
+                console.log('Socket disconnected, attempting to reconnect...');
+                setTimeout(initSocket, 3000);
             });
 
+
             socket.on('receiveMessage', (data) => {
-                // 'data' contains msg, username, etc.
                 addMessageToDOM(data.msg, 'received', data.username || 'Agent');
-                // Play sound if enabled
-                if (localStorage.getItem('soundEnabled') === 'true') {
-                    const notificationSound = new Audio('https://rajkumarmalluri.vercel.app/images/pyk-toon-n-n.mp3');
-                    notificationSound.play().catch(err => console.log('Error playing sound:', err));
+
+                // Play notification sound
+                playNotificationSound();
+
+                // Show browser notification
+                showNotification(data.msg, data.username || 'Agent');
+
+                // Update unread count if chat is closed
+                const chatbox = document.querySelector('.chatbox');
+                if (chatbox.style.display === 'none' || !chatbox.style.display) {
+                    unreadCount++;
+                    updateUnreadBadge();
                 }
             });
 
@@ -1219,6 +1392,9 @@
                 await initSession();
             } else {
                 // If we already have a session, fetch old messages
+                // Play notification sound
+                playNotificationSound();
+
                 const olderMessages = await fetchPreviousMessages(uniqueId);
                 olderMessages.forEach(msg => {
                     const isSent = (msg.user === "Guest") ? 'sent' : 'received';
@@ -1229,6 +1405,59 @@
             console.error('Socket initialization error:', error);
         }
     }
+
+    /**
+        * Helper function to create and show the notification
+        */
+    function createAndShowNotification(message, username) {
+
+        function toggleChatbox() {
+            const chatbox = document.querySelector('.chatbox');
+            const chatButton = document.querySelector('.chat-button');
+
+            if (chatbox.style.display === 'none' || !chatbox.style.display) {
+                chatbox.style.display = 'block';
+                unreadCount = 0;  // Reset unread count
+                updateUnreadBadge();
+                chatButton.style.display = 'none';
+            } else {
+                chatbox.classList.remove('visible');
+                setTimeout(() => {
+                    chatbox.style.display = 'none';
+                    chatButton.style.display = 'flex';
+                }, 300);
+            }
+        }
+
+        try {
+            const notification = new Notification(config.notifications.title, {
+                body: `${username}: ${message}`,
+                icon: config.notifications.icon,
+                tag: 'chat-message',
+                requireInteraction: false
+            });
+
+            // Store the notification reference
+            activeNotifications.push(notification);
+
+            // Handle notification click
+            notification.onclick = function () {
+                window.focus();
+                toggleChatbox();
+                this.close();
+            };
+
+            // Auto-close after timeout
+            setTimeout(() => {
+                notification.close();
+                activeNotifications = activeNotifications.filter(n => n !== notification);
+            }, config.notifications.timeout);
+
+        } catch (error) {
+            console.error('Error showing notification:', error);
+        }
+    }
+
 
     /**
      * Creates a new session on the server, stores uniqueId in localStorage,
@@ -1334,7 +1563,7 @@
     function initializeContactForm() {
         const formOverlay = document.querySelector('.contact-form-overlay');
         const submitButton = document.querySelector('.form-submit');
-        const skipButton = document.querySelector('.form-skip');
+        // const skipButton = document.querySelector('.form-skip');
         const nameInput = document.querySelector('#contact-name');
         const emailInput = document.querySelector('#contact-email');
         const phoneInput = document.querySelector('#contact-phone');
@@ -1421,6 +1650,38 @@
         submitButton.addEventListener('click', handleFormSubmit);
     }
 
+    /**
+     * initialize Notifications
+     */
+
+    function initializeNotifications() {
+        // Request notification permission when widget loads
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(function (permission) {
+                notificationPermission = permission;
+                localStorage.setItem('notificationPermission', permission);
+
+                // Update toggle in settings
+                const notificationToggle = document.getElementById('notification-toggle');
+                if (notificationToggle) {
+                    notificationToggle.checked = permission === 'granted';
+                    notificationToggle.disabled = permission === 'denied';
+                }
+            });
+        }
+
+        // Add notification toggle to settings
+        addNotificationToggle();
+
+        // Handle visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // Close all active notifications when tab becomes visible
+                activeNotifications.forEach(notification => notification.close());
+                activeNotifications = [];
+            }
+        });
+    }
 
     // ------------- MAIN ENTRY POINTS -------------
     // Wait for DOM to be ready
@@ -1431,11 +1692,13 @@
             initSocket(); // start the socket connection attempt
             starting();
             initializeContactForm();
+            initializeNotifications();
         });
     } else {
         createAndInjectCSS();
         initializeWidget();
         initSocket(); // start the socket connection attempt
         initializeContactForm();
+        initializeNotifications();
     }
 })();
