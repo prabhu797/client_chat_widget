@@ -48,6 +48,10 @@
 
     let username;
     let message;
+    const referrerUrl = document.referrer || window.location.href; // If no referrer, use current page
+    localStorage.setItem('chat_referrer', referrerUrl);
+
+    const chatReferrer = localStorage.getItem('chat_referrer') || 'Direct Visit';
 
 
 
@@ -1324,6 +1328,9 @@
             // If socket is connected, send it immediately
             if (socket && socket.connected) {
                 socket.emit('sendMessage', { msg: message, room: uniqueId, username: "Guest" });
+
+                // Track chat referrer for analytics purposes
+                // socket.emit('chatStarted', { referrer: chatReferrer });
             } else {
                 pendingMessages.push(message);
                 localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
@@ -1332,6 +1339,7 @@
 
         // Show/hide the "Send" button based on input
         input.addEventListener('input', function () {
+            socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: this.value });
             if (this.value.trim()) {
                 sendButton.classList.add('visible');
                 chatBubbleWidth.style.width = '97%';
@@ -1398,8 +1406,13 @@
             });
 
             socket.on('agentTyping', (data) => {
-                const container = document.querySelector('.chatbox-content');
-                const existingIndicator = container.querySelector('.typing-indicator');
+                const receivedMessages = document.querySelectorAll('.message.received');
+                // Ensure there are received messages
+                if (!receivedMessages.length) return;
+
+                // Target the last received message
+                const lastMessage = receivedMessages[receivedMessages.length - 1];
+                const existingIndicator = lastMessage.querySelector('.typing-indicator');
 
                 if (data.isTyping && !existingIndicator) {
                     const indicator = document.createElement('div');
@@ -1409,12 +1422,13 @@
                         <div class="typing-dot"></div>
                         <div class="typing-dot"></div>
                     `;
-                    container.appendChild(indicator);
-                    container.scrollTop = container.scrollHeight;
+                    lastMessage.appendChild(indicator);
+                    lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });
                 } else if (!data.isTyping && existingIndicator) {
                     existingIndicator.remove();
                 }
             });
+
 
             socket.on('agentJoined', (data) => {
                 console.log('Agent joined:', data);
@@ -1662,7 +1676,8 @@
                         sessionID: uniqueId,
                         name: name,
                         email: email || null,
-                        phone: phone || null
+                        phone: phone || null,
+                        referrer: chatReferrer
                     })
                 });
 
