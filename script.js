@@ -30,7 +30,7 @@
 
     // This array holds messages that the user sent while there was no socket connection
     // Once a connection is established, we send them automatically.
-    let pendingMessages = [];
+    let pendingMessages = JSON.parse(localStorage.getItem('pendingMessages')) || [];
     let formOverlay;
     let showContactForm;
     let hideContactForm;
@@ -38,7 +38,7 @@
     let unreadCount = 0; // Track unread messages
     let notificationSound = new Audio('https://noveloffice.in/wp-content/uploads/2025/02/new_notification.mp3');
 
-    // let notificationPermission = Notification.permission;
+    let notificationPermission = Notification.permission;
     let activeNotifications = [];
     let storedSettings = {
         widgetBackground: localStorage.getItem('chatWidgetBackground') || '#39B3BA',
@@ -48,6 +48,7 @@
 
     let username;
     let message;
+
 
 
     /**
@@ -72,6 +73,8 @@
         document.head.appendChild(preconnect2);
         document.head.appendChild(link);
     }
+
+    loadGoogleFonts()
 
 
     /**
@@ -565,121 +568,121 @@
             }
                 
             .contact-form-overlay {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 10001;
-                display: none;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-            }
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10001;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
 
-            .contact-form {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: white;
-                padding: 20px;
-                border-radius: 12px;
-                width: 80%;
-                max-width: 300px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            }
+    .contact-form {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        width: 80%;
+        max-width: 300px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
 
-            .contact-form h3 {
-                margin: 0 0 20px 0;
-                color: #333;
-                font-size: 18px;
-                text-align: center;
-            }
+    .contact-form h3 {
+        margin: 0 0 20px 0;
+        color: #333;
+        font-size: 18px;
+        text-align: center;
+    }
 
-            .form-group {
-                margin-bottom: 15px;
-            }
+    .form-group {
+        margin-bottom: 15px;
+    }
 
-            .form-group label {
-                display: block;
-                margin-bottom: 5px;
-                color: #000;
-                font-size: 14px;
-            }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #000;
+        font-size: 14px;
+    }
 
-            .form-group input {
-                width: 100%;
-                padding: 8px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-                font-size: 14px;
-                box-sizing: border-box;
-            }
+    .form-group input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
 
-            #contact-name-label:after{
-                content: " *";
-                color: red;
-            }
+    #contact-name-label:after{
+        content: " *";
+        color: red;
+    }
 
-            .form-group input:focus {
-                outline: none;
-                border-color: ${config.backgroundColor};
-                box-shadow: 0 0 0 2px ${config.backgroundColor}20;
-            }
-            
-            /* Chrome, Safari, Edge, Opera */
-            input::-webkit-outer-spin-button,
-            input::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
+    .form-group input:focus {
+        outline: none;
+        border-color: ${config.backgroundColor};
+        box-shadow: 0 0 0 2px ${config.backgroundColor}20;
+    }
+    
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
 
-            /* Firefox */
-            input[type=number] {
-                -moz-appearance: textfield;
-            }
+    /* Firefox */
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
 
-            .form-buttons {
-                display: flex;
-                gap: 10px;
-                margin-top: 20px;
-            }
+    .form-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
 
-            .form-submit, .form-skip {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
+    .form-submit, .form-skip {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
 
-            .form-submit {
-            background-color: ${config.backgroundColor};
-            color: ${config.color};
-        }   
+    .form-submit {
+    background-color: ${config.backgroundColor};
+    color: ${config.color};
+}
 
-            .form-skip {
-                background-color: #f5f5f5;
-                color: #666;
-            }
+.form-skip {
+    background-color: #f5f5f5;
+    color: #666;
+}
 
-            .form-submit:hover, .form-skip:hover {
-                opacity: 0.9;
-            }
+.form-submit:hover, .form-skip:hover {
+    opacity: 0.9;
+}
 
-            /* Remove the 'required' attribute styling */
-            .form-group input:required {
-                box-shadow: none;
-            }
+/* Remove the 'required' attribute styling */
+.form-group input:required {
+    box-shadow: none;
+}
 
-            .form-group input:invalid {
-                box-shadow: none;
-            }
+.form-group input:invalid {
+    box-shadow: none;
+}
 
-            .unread-badge {
+.unread-badge {
                 position: absolute;
                 top: -5px;
                 right: -5px;
@@ -712,53 +715,6 @@
                 }
             }
 
-            .typing-indicator {
-                display: flex;
-                gap: 4px;
-                padding: 10px;
-                background: #e0f7fa;
-                border-radius: 0.5rem;
-                margin-bottom: 4px;
-                width: fit-content;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .typing-dot {
-                width: 8px;
-                height: 8px;
-                background: #39B3BA;
-                border-radius: 50%;
-                animation: bounce 1.3s linear infinite;
-            }
-
-            .typing-dot:nth-child(2) {
-                animation-delay: 0.15s;
-            }
-
-            .typing-dot:nth-child(3) {
-                animation-delay: 0.3s;
-            }
-
-            @keyframes bounce {
-                0%, 60%, 100% {
-                    transform: translateY(0);
-                }
-                30% {
-                    transform: translateY(-4px);
-                }
-            }
-
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
         `;
         document.head.appendChild(style);
     }
@@ -767,6 +723,7 @@
      * Creates the main widget HTML that will be injected into the DOM.
      */
     function createWidgetHTML() {
+
         return `
             <div class="chat-button">
                 <div class="widget-button-text">Chat</div>
@@ -1052,15 +1009,7 @@
             const permission = await Notification.requestPermission();
             notificationPermission = permission;
 
-            // Store the permission in localStorage to remember user's choice
-            localStorage.setItem('notificationPermission', permission);
 
-            // Update the toggle in settings if it exists
-            const notificationToggle = document.getElementById('notification-toggle');
-            if (notificationToggle) {
-                notificationToggle.checked = permission === 'granted';
-                notificationToggle.disabled = permission === 'denied';
-            }
         } catch (error) {
             console.error('Error requesting notification permission:', error);
         }
@@ -1115,18 +1064,20 @@
         }
     }
 
-    /** 
-     * Add this to your initializeWidget function
-     */
-    function addNotificationToggle() {
-        // Add event listener for the toggle
-        const notificationToggle = document.getElementById('notification-toggle');
-        notificationToggle.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                requestNotificationPermission();
-            }
-        });
-    }
+
+
+
+    // // Add this to your initializeWidget function
+    // function addNotificationToggle() {
+    //     // Add event listener for the toggle
+    //     const notificationToggle = document.getElementById('notification-toggle');
+    //     notificationToggle.addEventListener('change', (e) => {
+    //         if (e.target.checked) {
+    //             requestNotificationPermission();
+    //         }
+    //     });
+    // }
+
 
     /**
      * Initialize the entire chat widget once the DOM is ready.
@@ -1473,6 +1424,7 @@
                 console.log('Agent left:', data);
             });
 
+
             // If no uniqueId, let's create a new session
             if (!uniqueId) {
                 await initSession();
@@ -1493,8 +1445,8 @@
     }
 
     /**
-     * Helper function to create and show the notification
-     */
+    * Helper function to create and show the notification
+    */
     function createAndShowNotification(message, username) {
 
         function toggleChatbox() {
@@ -1543,7 +1495,6 @@
             console.error('Error showing notification:', error);
         }
     }
-
 
     /**
      * Creates a new session on the server, stores uniqueId in localStorage,
@@ -1610,7 +1561,7 @@
         if (type === 'sent') {
             displayText = `${text}`;
             const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
-            messageDiv.style.background = ` ${savedColor}`;
+            messageDiv.style.background = `${savedColor}`;
         } else if (type === 'received') {
             displayText = `<span class="message-user">${username}</span> ${text}`;
         } else {
@@ -1649,7 +1600,6 @@
     function initializeContactForm() {
         const formOverlay = document.querySelector('.contact-form-overlay');
         const submitButton = document.querySelector('.form-submit');
-        // const skipButton = document.querySelector('.form-skip');
         const nameInput = document.querySelector('#contact-name');
         const emailInput = document.querySelector('#contact-email');
         const phoneInput = document.querySelector('#contact-phone');
@@ -1736,55 +1686,50 @@
         submitButton.addEventListener('click', handleFormSubmit);
     }
 
+
     /**
-     * initialize Notifications
+     *  Add to your initialization code
      */
 
-    // function initializeNotifications() {
-    //     // Request notification permission when widget loads
-    //     if (Notification.permission === 'default') {
-    //         Notification.requestPermission().then(function (permission) {
-    //             notificationPermission = permission;
-    //             localStorage.setItem('notificationPermission', permission);
+    function initializeNotifications() {
+        // Request notification permission when widget loads
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(function (permission) {
+                notificationPermission = permission;
+                localStorage.setItem('notificationPermission', permission);
+            });
+        }
 
-    //             // Update toggle in settings
-    //             const notificationToggle = document.getElementById('notification-toggle');
-    //             if (notificationToggle) {
-    //                 notificationToggle.checked = permission === 'granted';
-    //                 notificationToggle.disabled = permission === 'denied';
-    //             }
-    //         });
-    //     }
+        // Add notification toggle to settings
+        addNotificationToggle();
 
-    //     // Add notification toggle to settings
-    //     addNotificationToggle();
+        // Handle visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // Close all active notifications when tab becomes visible
+                activeNotifications.forEach(notification => notification.close());
+                activeNotifications = [];
+            }
+        });
+    }
 
-    //     // Handle visibility change
-    //     document.addEventListener('visibilitychange', () => {
-    //         if (!document.hidden) {
-    //             // Close all active notifications when tab becomes visible
-    //             activeNotifications.forEach(notification => notification.close());
-    //             activeNotifications = [];
-    //         }
-    //     });
-    // }
 
     // ------------- MAIN ENTRY POINTS -------------
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {
             createAndInjectCSS();
-            loadGoogleFonts()
             initializeWidget();
             initSocket(); // start the socket connection attempt
             starting();
             initializeContactForm();
+            initializeNotifications()
         });
     } else {
         createAndInjectCSS();
-        loadGoogleFonts()
         initializeWidget();
         initSocket(); // start the socket connection attempt
         initializeContactForm();
+        initializeNotifications()
     }
 })();
