@@ -1,5 +1,5 @@
 /**
- * Chat Widget Implementation with proper DOM loading
+ * Chat Widget Implementation 
  */
 (function () {
     const config = {
@@ -26,7 +26,7 @@
     // Global state variables
     let hasMessages = false;
     let socket = null;
-    let uniqueId = localStorage.getItem("unique-id");
+    let uniqueId = localStorage.getItem("sessionId");
 
     // This array holds messages that the user sent while there was no socket connection
     // Once a connection is established, we send them automatically.
@@ -257,6 +257,18 @@
             span.message-user {
                     font-size: 11px;
                     font-weight: 700;
+            }
+            
+            .agent-joined{
+                background: #9ca3af;
+                justify-self:center;
+                color: #000101;
+                font-size: 14px;
+                margin-bottom: 10px;
+                border-radius: 0.5rem;
+                word-break: break-word;
+                white-space: pre-wrap;
+                overflow-wrap: break-word;
             }
                     
             .message.sent {
@@ -719,6 +731,43 @@
                 }
             }
 
+            .typing-indicator {
+                padding: 12px 15px;
+                width: fit-content;
+                margin-bottom: 10px;
+                display: none; /* Hidden by default */
+            }
+
+            .typing-dots {
+                display: flex;
+            }
+
+            .dot {
+                height: 8px;
+                background-color: #999;
+                border-radius: 50%;
+                margin-right: 4px;
+                animation: bounce 1.5s infinite;
+                width: 8px;
+                }
+
+            .dot:nth-child(2) {
+                animation-delay: 0.2s;
+            }
+
+            .dot:nth-child(3) {
+                animation-delay: 0.4s;
+                margin-right: 0;
+            }
+
+            @keyframes bounce {
+                0%, 60%, 100% {
+                transform: translateY(0);
+                }
+                30% {
+                transform: translateY(-5px);
+                }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -810,7 +859,15 @@
                     </div>
                 </div>
                 <div class="chatbox-main">
-                    <div class="chatbox-content"></div>
+                    <div class="chatbox-content">
+                    <div class="typing-indicator" id="typing-indicator">
+                        <div class="typing-dots">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                    </div>
+                    </div>
                     <div class="chatbox-input">
                         <input type="text" placeholder="Type your message here">
                         <button class="send-button"><svg width="1.4em" height="1.4em" viewBox="0 0 209 209" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" fill-rule="evenodd" clip-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"><path d="M177.954,104.163l-110.066,-0m110.066,-0l-138.95,69.4l28.884,-69.4l-28.884,-69.584l138.95,69.584Z" style="fill:none;fill-rule:nonzero;stroke:currentColor;stroke-width:17.38px;"></path></svg></button>
@@ -1405,32 +1462,36 @@
                 }
             });
 
+
+            // Handle typing indicator
             socket.on('agentTyping', (data) => {
-                const receivedMessages = document.querySelectorAll('.message.received');
-                // Ensure there are received messages
-                if (!receivedMessages.length) return;
+                const chatboxContent = document.querySelector('.chatbox-content');
+                const typingIndicator = document.getElementById('typing-indicator');
 
-                // Target the last received message
-                const lastMessage = receivedMessages[receivedMessages.length - 1];
-                const existingIndicator = lastMessage.querySelector('.typing-indicator');
-
-                if (data.isTyping && !existingIndicator) {
-                    const indicator = document.createElement('div');
-                    indicator.className = 'typing-indicator';
-                    indicator.innerHTML = `
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                    `;
-                    lastMessage.appendChild(indicator);
-                    lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                } else if (!data.isTyping && existingIndicator) {
-                    existingIndicator.remove();
+                if (data.isTyping) {
+                    // Show typing indicator
+                    typingIndicator.style.display = 'block';
+                    // Scroll to the bottom to make typing indicator visible
+                    chatboxContent.scrollTop = chatboxContent.scrollHeight;
+                } else {
+                    // Hide typing indicator
+                    typingIndicator.style.display = 'none';
                 }
             });
 
-
+            // Handle agent joined and left events
             socket.on('agentJoined', (data) => {
+                const container = document.querySelector('.chatbox-content');
+                if (!container) return;
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `agent-joined`;
+                let displayText = `${data.msg}`;
+                messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
+                container.appendChild(messageDiv);
+
+                container.scrollTop = container.scrollHeight;
+
                 console.log('Agent joined:', data);
             });
 
@@ -1450,7 +1511,7 @@
                 const olderMessages = await fetchPreviousMessages(uniqueId);
                 olderMessages.forEach(msg => {
                     const isSent = (msg.user === "Guest") ? 'sent' : 'received';
-                    addMessageToDOM(msg.message, isSent, msg.user);
+                    addMessageToDOM(msg.message, isSent, msg.user, msg.message_type);
                 });
             }
         } catch (error) {
@@ -1529,7 +1590,7 @@
             const data = await response.json();
             if (data.message === "success") {
                 uniqueId = data.id;
-                localStorage.setItem("unique-id", uniqueId);
+                localStorage.setItem("sessionId", uniqueId);
                 if (socket) {
                     socket.emit("join_room", { room: uniqueId, username: "Guest" });
                 }
@@ -1564,25 +1625,34 @@
      * We define it outside so socket events can call it,
      * but the main usage is in initSocket.
      */
-    function addMessageToDOM(text, type, username) {
+    function addMessageToDOM(text, type, username, message_type) {
         // We'll find the container from the DOM
         const container = document.querySelector('.chatbox-content');
         if (!container) return;
 
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-        let displayText;
-        if (type === 'sent') {
-            displayText = `${text}`;
-            const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
-            messageDiv.style.background = `${savedColor}`;
-        } else if (type === 'received') {
-            displayText = `<span class="message-user">${username}</span> ${text}`;
-        } else {
-            displayText = text;
+        // append User History
+        if (message_type === 'Activity') {
+            let displayText = `${text}`;
+            messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
+            container.appendChild(messageDiv);
         }
-        messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
-        container.appendChild(messageDiv);
+        // append Message history 
+        else {
+            messageDiv.className = `message ${type}`;
+            let displayText;
+            if (type === 'sent') {
+                displayText = `${text}`;
+                const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
+                messageDiv.style.background = `${savedColor}`;
+            } else if (type === 'received') {
+                displayText = `<span class="message-user">${username}</span> ${text}`;
+            } else {
+                displayText = text;
+            }
+            messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
+            container.appendChild(messageDiv);
+        }
 
         container.scrollTop = container.scrollHeight;
 
@@ -1677,7 +1747,7 @@
                         name: name,
                         email: email || null,
                         phone: phone || null,
-                        referrer: chatReferrer
+                        // referrer: chatReferrer
                     })
                 });
 
@@ -1738,7 +1808,7 @@
             initSocket(); // start the socket connection attempt
             starting();
             initializeContactForm();
-            initializeNotifications()
+            initializeNotifications();
         });
     } else {
         createAndInjectCSS();
