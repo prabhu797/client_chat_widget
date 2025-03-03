@@ -52,7 +52,7 @@
     localStorage.setItem('chat_referrer', referrerUrl);
 
     const chatReferrer = localStorage.getItem('chat_referrer') || 'Direct Visit';
-
+    let typingTimeout;
 
 
     /**
@@ -860,13 +860,6 @@
                 </div>
                 <div class="chatbox-main">
                     <div class="chatbox-content">
-                    <div class="typing-indicator" id="typing-indicator">
-                        <div class="typing-dots">
-                            <div class="dot"></div>
-                            <div class="dot"></div>
-                            <div class="dot"></div>
-                        </div>
-                    </div>
                     </div>
                     <div class="chatbox-input">
                         <input type="text" placeholder="Type your message here">
@@ -1463,23 +1456,52 @@
             });
 
 
-            // Handle typing indicator
             socket.on('agentTyping', (data) => {
                 const chatboxContent = document.querySelector('.chatbox-content');
-                const typingIndicator = document.getElementById('typing-indicator');
+                let typingIndicator = document.getElementById('typing-indicator');
 
-                if (data) {
-                    // Show typing indicator
+                if (!typingIndicator) {
+                    // Create typing indicator dynamically if it doesn’t exist
+                    typingIndicator = document.createElement('div');
+                    typingIndicator.className = 'typing-indicator';
+                    typingIndicator.id = 'typing-indicator';
+                    typingIndicator.innerHTML = `
+                    <div class="typing-dots">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                    `;
+                }
+
+                // Find the last message (sent or received)
+                const lastMessage = document.querySelector('.message.sent:last-of-type, .message.received:last-of-type');
+
+                if (data.isTyping) {
+                    if (lastMessage) {
+                        // Insert the typing indicator **after** the last message
+                        lastMessage.insertAdjacentElement('afterend', typingIndicator);
+                    } else {
+                        // If no messages exist, add it to the chatbox
+                        chatboxContent.appendChild(typingIndicator);
+                    }
+
                     typingIndicator.style.display = 'block';
-                    // Scroll to the bottom to make typing indicator visible
                     chatboxContent.scrollTop = chatboxContent.scrollHeight;
-                    console.log();
-                    
+
+                    // Clear existing timeout
+                    clearTimeout(typingTimeout);
+
+                    // Auto-hide if no further typing event within 2 seconds
+                    typingTimeout = setTimeout(() => {
+                        typingIndicator.style.display = 'none';
+                    }, 2000);
                 } else {
-                    // Hide typing indicator
                     typingIndicator.style.display = 'none';
                 }
             });
+
+
 
             // Handle agent joined and left events
             socket.on('agentJoined', (data) => {
