@@ -1468,11 +1468,13 @@
                 const chatboxContent = document.querySelector('.chatbox-content');
                 const typingIndicator = document.getElementById('typing-indicator');
 
-                if (data.isTyping) {
+                if (data) {
                     // Show typing indicator
                     typingIndicator.style.display = 'block';
                     // Scroll to the bottom to make typing indicator visible
                     chatboxContent.scrollTop = chatboxContent.scrollHeight;
+                    console.log();
+                    
                 } else {
                     // Hide typing indicator
                     typingIndicator.style.display = 'none';
@@ -1486,7 +1488,7 @@
 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `agent-joined`;
-                let displayText = `${data.msg}`;
+                let displayText = `${data.username}`;
                 messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
                 container.appendChild(messageDiv);
 
@@ -1786,7 +1788,7 @@
         }
 
         // Add notification toggle to settings
-        addNotificationToggle();
+        // addNotificationToggle();
 
         // Handle visibility change
         document.addEventListener('visibilitychange', () => {
