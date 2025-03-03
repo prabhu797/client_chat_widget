@@ -860,6 +860,13 @@
                 </div>
                 <div class="chatbox-main">
                     <div class="chatbox-content">
+                    <div class="typing-indicator" id="typing-indicator">
+                        <div class="typing-dots">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                    </div>
                     </div>
                     <div class="chatbox-input">
                         <input type="text" placeholder="Type your message here">
@@ -1456,51 +1463,26 @@
             });
 
 
+            // Handle typing indicator
+            let typingTimeout;
+
             socket.on('agentTyping', (data) => {
                 const chatboxContent = document.querySelector('.chatbox-content');
-                let typingIndicator = document.getElementById('typing-indicator');
-
-                if (!typingIndicator) {
-                    // Create typing indicator dynamically if it doesn’t exist
-                    typingIndicator = document.createElement('div');
-                    typingIndicator.className = 'typing-indicator';
-                    typingIndicator.id = 'typing-indicator';
-                    typingIndicator.innerHTML = `
-                    <div class="typing-dots">
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                    </div>
-                    `;
-                }
-
-                // Find the last message (sent or received)
-                const lastMessage = document.querySelector('.message.sent:last-of-type, .message.received:last-of-type');
+                const typingIndicator = document.getElementById('typing-indicator');
 
                 if (data.isTyping) {
-                    if (lastMessage) {
-                        // Insert the typing indicator **after** the last message
-                        lastMessage.insertAdjacentElement('afterend', typingIndicator);
-                    } else {
-                        // If no messages exist, add it to the chatbox
-                        chatboxContent.appendChild(typingIndicator);
-                    }
-
                     typingIndicator.style.display = 'block';
                     chatboxContent.scrollTop = chatboxContent.scrollHeight;
 
-                    // Clear existing timeout
                     clearTimeout(typingTimeout);
 
-                    // Auto-hide if no further typing event within 2 seconds
                     typingTimeout = setTimeout(() => {
                         typingIndicator.style.display = 'none';
-                    }, 2000);
+                    }, 2000); 
                 } else {
                     typingIndicator.style.display = 'none';
                 }
             });
-
 
 
             // Handle agent joined and left events
