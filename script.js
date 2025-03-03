@@ -5,12 +5,12 @@
     const config = {
 
         // Development API
-        // socketURL: "http://localhost:4040",
-        // apiURL: "http://localhost:4040/api",
+        socketURL: "http://localhost:4040",
+        apiURL: "http://localhost:4040/api",
 
         // Production API
-        socketURL: "https://socket.novelhouston.com",
-        apiURL: "https://socket.novelhouston.com/api",
+        // socketURL: "https://socket.novelhouston.com",
+        // apiURL: "https://socket.novelhouston.com/api",
 
         color: '#ffffff',
         backgroundColor: '#39B3BA',
@@ -260,15 +260,15 @@
             }
             
             .agent-joined{
-                background: #9ca3af;
-                justify-self:center;
-                color: #000101;
-                font-size: 14px;
-                margin-bottom: 10px;
-                border-radius: 0.5rem;
+                color: black;
                 word-break: break-word;
                 white-space: pre-wrap;
                 overflow-wrap: break-word;
+                margin-bottom: 4px;
+                border-radius: 0.5rem;
+                margin-right: auto;
+                margin-top: 30px;
+                text-align: center;
             }
                     
             .message.sent {
@@ -860,11 +860,15 @@
                 </div>
                 <div class="chatbox-main">
                     <div class="chatbox-content">
+                    
                     <div class="typing-indicator" id="typing-indicator">
+                    <div class="message received"> <div class="message-text">
                         <div class="typing-dots">
                             <div class="dot"></div>
                             <div class="dot"></div>
                             <div class="dot"></div>
+                        </div>
+                        </div>
                         </div>
                     </div>
                     </div>
@@ -1463,16 +1467,15 @@
             });
 
 
-            // Handle typing indicator
-            let typingTimeout;
+          
 
             socket.on('agentTyping', (data) => {
                 const chatboxContent = document.querySelector('.chatbox-content');
                 const typingIndicator = document.getElementById('typing-indicator');
 
-                if (data.isTyping) {
+                if (data) {
                     typingIndicator.style.display = 'block';
-                    chatboxContent.scrollTop = chatboxContent.scrollHeight;
+                    // chatboxContent.scrollTop = chatboxContent.scrollHeight;
 
                     clearTimeout(typingTimeout);
 
@@ -1493,7 +1496,7 @@
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `agent-joined`;
                 let displayText = `${data.username}`;
-                messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
+                messageDiv.innerHTML = `<div class="message-text">${displayText} has joined the chat.</div>`;
                 container.appendChild(messageDiv);
 
                 container.scrollTop = container.scrollHeight;
@@ -1639,6 +1642,7 @@
         const messageDiv = document.createElement('div');
         // append User History
         if (message_type === 'Activity') {
+            messageDiv.className = `agent-joined`;
             let displayText = `${text}`;
             messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
             container.appendChild(messageDiv);
