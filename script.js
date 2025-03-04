@@ -1640,7 +1640,7 @@
                     chatboxContent.appendChild(typingIndicator);
                 }
 
-                if (data.isTyping) {
+                if (data) {
                     // Move typing indicator to the end of chatbox-content
                     chatboxContent.appendChild(typingIndicator);
                     typingIndicator.style.display = 'block';
