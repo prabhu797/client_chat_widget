@@ -1672,7 +1672,7 @@
                     typingTimeout = setTimeout(() => {
                         typingIndicator.style.display = 'none';
                         chatBody.style.height="calc(100% - 0px)";
-                    }, 20000);
+                    }, 2000);
                 } else {
                     typingIndicator.style.display = 'none';
                     chatBody.style.height="calc(100% - 0px)";
