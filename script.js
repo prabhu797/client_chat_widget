@@ -5,12 +5,12 @@
     const config = {
 
         // Development API
-        // socketURL: "http://localhost:4040",
-        // apiURL: "http://localhost:4040/api",
+        socketURL: "http://localhost:4040",
+        apiURL: "http://localhost:4040/api",
 
         // Production API
-        socketURL: "https://socket.novelhouston.com",
-        apiURL: "https://socket.novelhouston.com/api",
+        // socketURL: "https://socket.novelhouston.com",
+        // apiURL: "https://socket.novelhouston.com/api",
 
         color: '#ffffff',
         backgroundColor: '#39B3BA',
@@ -218,10 +218,14 @@
                 background-color: #d9d2d269 !important;
             }
             .chatbox-main{
-             height: calc(100% - 150px);
+                height: calc(100% - 150px);
             }
+             .chatbox-body{
+                transition: height 250ms ease-in-out;
+                height:calc(100% - 0px);
+             }
             .chatbox-content {
-                height: calc(100% - 41px);
+                height: calc(100% - 58px);
                 overflow-y: auto;
                 padding: 10px;
                 background:white;
@@ -253,6 +257,17 @@
                 font-size: 0.875rem;
                 flex-direction: column;
             }
+            .agent-joined-text {
+                background-color: #80808021;
+                border-radius: 0.5rem;
+                font-size: 0.7rem;
+                padding: 0.3rem;
+                margin-bottom: 0.5rem;
+                color: #363636;
+                display: inline-flex;
+                flex-direction: column;
+                line-height: 1.25rem;
+            }
                 
             span.message-user {
                     font-size: 11px;
@@ -269,6 +284,7 @@
                 margin-right: auto;
                 margin-top: 30px;
                 text-align: center;
+                font-size: 0.7rem;
             }
                     
             .message.sent {
@@ -294,6 +310,12 @@
                 border-radius: 0.5rem;
                 margin-right: auto;
             }
+            .indicator {
+                 white-space: normal !important;
+                 max-width: 100%;
+                
+            }
+            
 
             /* New chat input styles */
             .chatbox-input {
@@ -578,127 +600,124 @@
                     border-radius: 0;
                 }
                 
-                .chatbox-content {
-                    height: calc(100vh - 100px);
-                }
             }
                 
             .contact-form-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 10001;
-        display: none;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 10001;
+                display: none;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
 
-    .contact-form {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        width: 80%;
-        max-width: 300px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
+            .contact-form {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 12px;
+                width: 80%;
+                max-width: 300px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
 
-    .contact-form h3 {
-        margin: 0 0 20px 0;
-        color: #333;
-        font-size: 18px;
-        text-align: center;
-    }
+            .contact-form h3 {
+                margin: 0 0 20px 0;
+                color: #333;
+                font-size: 18px;
+                text-align: center;
+            }
 
-    .form-group {
-        margin-bottom: 15px;
-    }
+            .form-group {
+                margin-bottom: 15px;
+            }
 
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        color: #000;
-        font-size: 14px;
-    }
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                color: #000;
+                font-size: 14px;
+            }
 
-    .form-group input {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        font-size: 14px;
-        box-sizing: border-box;
-    }
+            .form-group input {
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 14px;
+                box-sizing: border-box;
+            }
 
-    #contact-name-label:after{
-        content: " *";
-        color: red;
-    }
+            #contact-name-label:after{
+                content: " *";
+                color: red;
+            }
 
-    .form-group input:focus {
-        outline: none;
-        border-color: ${config.backgroundColor};
-        box-shadow: 0 0 0 2px ${config.backgroundColor}20;
-    }
-    
-    /* Chrome, Safari, Edge, Opera */
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
+            .form-group input:focus {
+                outline: none;
+                border-color: ${config.backgroundColor};
+                box-shadow: 0 0 0 2px ${config.backgroundColor}20;
+            }
+            
+            /* Chrome, Safari, Edge, Opera */
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
 
-    /* Firefox */
-    input[type=number] {
-        -moz-appearance: textfield;
-    }
+            /* Firefox */
+            input[type=number] {
+                -moz-appearance: textfield;
+            }
 
-    .form-buttons {
-        display: flex;
-        gap: 10px;
-        margin-top: 20px;
-    }
+            .form-buttons {
+                display: flex;
+                gap: 10px;
+                margin-top: 20px;
+            }
 
-    .form-submit, .form-skip {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s ease;
-}
+            .form-submit, .form-skip {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
 
-    .form-submit {
-    background-color: ${config.backgroundColor};
-    color: ${config.color};
-}
+            .form-submit {
+            background-color: ${config.backgroundColor};
+            color: ${config.color};
+        }
 
-.form-skip {
-    background-color: #f5f5f5;
-    color: #666;
-}
+        .form-skip {
+            background-color: #f5f5f5;
+            color: #666;
+        }
 
-.form-submit:hover, .form-skip:hover {
-    opacity: 0.9;
-}
+        .form-submit:hover, .form-skip:hover {
+            opacity: 0.9;
+        }
 
-/* Remove the 'required' attribute styling */
-.form-group input:required {
-    box-shadow: none;
-}
+        /* Remove the 'required' attribute styling */
+        .form-group input:required {
+            box-shadow: none;
+        }
 
-.form-group input:invalid {
-    box-shadow: none;
-}
+        .form-group input:invalid {
+            box-shadow: none;
+        }
 
-.unread-badge {
+        .unread-badge {
                 position: absolute;
                 top: -5px;
                 right: -5px;
@@ -735,22 +754,29 @@
                 padding: 12px 15px;
                 width: fit-content;
                 margin-bottom: 10px;
-                display: none; /* Hidden by default */
+                display: none;
+                position: relative;
+                z-index: 99999999999;
+                bottom: 19px;
             }
 
             .typing-dots {
                 display: flex;
+                align-items:center;
             }
 
             .dot {
-                height: 8px;
+                height: 5px;
                 background-color: #999;
                 border-radius: 50%;
                 margin-right: 4px;
                 animation: bounce 1.5s infinite;
-                width: 8px;
+                width: 5px;
                 }
 
+            .dot:nth-child(1) {
+                margin-left:10px;
+            }
             .dot:nth-child(2) {
                 animation-delay: 0.2s;
             }
@@ -987,9 +1013,21 @@
                     </div>
                 </div>
                 <div class="chatbox-main">
+                  <div class="chatbox-body">
                     <div class="chatbox-content">
-                    
                     </div>
+                    <div class="typing-indicator" id="typing-indicator">
+                        <div class="message received indicator">
+                            <div class="message-text">
+                                <div class="typing-dots">Typing
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                  </div>  
                     <div class="chatbox-input">
                         <input type="text" placeholder="Type your message here">
                         <button class="send-button"><svg width="1.4em" height="1.4em" viewBox="0 0 209 209" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" fill-rule="evenodd" clip-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"><path d="M177.954,104.163l-110.066,-0m110.066,-0l-138.95,69.4l28.884,-69.4l-28.884,-69.584l138.95,69.584Z" style="fill:none;fill-rule:nonzero;stroke:currentColor;stroke-width:17.38px;"></path></svg></button>
@@ -1595,10 +1633,17 @@
                 console.log('Socket disconnected, attempting to reconnect...');
                 setTimeout(initSocket, 3000);
             });
-
+            
+            let typingIndicator = document.getElementById('typing-indicator');
+            let chatBody = document.querySelector('.chatbox-body');
+            let chatboxContent = document.querySelector('.chatbox-content');
 
             socket.on('receiveMessage', (data) => {
                 addMessageToDOM(data.msg, 'received', data.username || 'Agent');
+                if(data.msg){
+                    typingIndicator.style.display="none";
+                    chatBody.style.height="calc(100% - 0px)";
+                }
 
                 // Play notification sound
                 playNotificationSound();
@@ -1614,44 +1659,23 @@
                 }
             });
 
-
-
-
             socket.on('agentTyping', (data) => {
-                const chatboxContent = document.querySelector('.chatbox-content');
-                let typingIndicator = document.getElementById('typing-indicator');
-
-                if (!typingIndicator) {
-                    // Create typing indicator dynamically if it doesn’t exist
-                    typingIndicator = document.createElement('div');
-                    typingIndicator.className = 'typing-indicator';
-                    typingIndicator.id = 'typing-indicator';
-                    typingIndicator.innerHTML = `
-                        <div class="message received"> 
-                            <div class="message-text">
-                                <div class="typing-dots">
-                                    <div class="dot"></div>
-                                    <div class="dot"></div>
-                                    <div class="dot"></div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    chatboxContent.appendChild(typingIndicator);
-                }
 
                 if (data) {
                     // Move typing indicator to the end of chatbox-content
-                    chatboxContent.appendChild(typingIndicator);
                     typingIndicator.style.display = 'block';
+                    chatBody.style.height="calc(100% - 30px)";
+
                     chatboxContent.scrollTop = chatboxContent.scrollHeight;
 
                     clearTimeout(typingTimeout);
                     typingTimeout = setTimeout(() => {
                         typingIndicator.style.display = 'none';
-                    }, 2000);
+                        chatBody.style.height="calc(100% - 0px)";
+                    }, 20000);
                 } else {
                     typingIndicator.style.display = 'none';
+                    chatBody.style.height="calc(100% - 0px)";
                 }
             });
 
@@ -1664,7 +1688,7 @@
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `agent-joined`;
                 let displayText = `${data.username}`;
-                messageDiv.innerHTML = `<div class="message-text">${displayText} has joined the chat.</div>`;
+                messageDiv.innerHTML = `<div class="agent-joined-text ">${displayText} has joined the chat.</div>`;
                 container.appendChild(messageDiv);
 
                 container.scrollTop = container.scrollHeight;
@@ -1812,7 +1836,7 @@
         if (message_type === 'Activity') {
             messageDiv.className = `agent-joined`;
             let displayText = `${text}`;
-            messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
+            messageDiv.innerHTML = `<div class="agent-joined-text ">${displayText}</div>`;
             container.appendChild(messageDiv);
         }
         // append Message history 
