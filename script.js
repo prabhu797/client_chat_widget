@@ -5,12 +5,12 @@
     const config = {
 
         // Development API
-        socketURL: "http://localhost:4040",
-        apiURL: "http://localhost:4040/api",
+        // socketURL: "http://localhost:4040",
+        // apiURL: "http://localhost:4040/api",
 
         // Production API
-        // socketURL: "https://socket.novelhouston.com",
-        // apiURL: "https://socket.novelhouston.com/api",
+        socketURL: "https://socket.novelhouston.com",
+        apiURL: "https://socket.novelhouston.com/api",
 
         color: '#ffffff',
         backgroundColor: '#39B3BA',
@@ -768,6 +768,134 @@
                 transform: translateY(-5px);
                 }
             }
+
+
+            // Styling for the rating modal.rate-button {
+            padding: 12px 24px;
+            background-color: #4a76f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .rate-button:hover {
+            background-color: #3a5fc5;
+        }
+        
+        .rating-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .rating-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .rating-title {
+            margin-top: 0;
+            margin-bottom: 16px;
+            text-align: center;
+            color: #333;
+        }
+        
+        .rating-emojis {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        
+        .emoji {
+            font-size: 42px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: transform 0.2s;
+            opacity: 0.5;
+        }
+        
+        .emoji:hover {
+            transform: scale(1.2);
+        }
+        
+        .emoji.active {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+        
+        .emoji-label {
+            display: block;
+            text-align: center;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .emoji-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .feedback-area {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .submit-rating {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #4a76f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .submit-rating:hover {
+            background-color: #3a5fc5;
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .thank-you {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color:#000000;
+            font-weight: bold;
+        }
         `;
         document.head.appendChild(style);
     }
@@ -861,16 +989,6 @@
                 <div class="chatbox-main">
                     <div class="chatbox-content">
                     
-                    <div class="typing-indicator" id="typing-indicator">
-                    <div class="message received"> <div class="message-text">
-                        <div class="typing-dots">
-                            <div class="dot"></div>
-                            <div class="dot"></div>
-                            <div class="dot"></div>
-                        </div>
-                        </div>
-                        </div>
-                    </div>
                     </div>
                     <div class="chatbox-input">
                         <input type="text" placeholder="Type your message here">
@@ -919,6 +1037,7 @@
                                     </label>
                                 </div>
                             </div>
+                            <button class="rate-button" id="rateButton">Rate Our Service</button>
 
                             <div class="options-section">
                                 <button class="options-action-btn download-transcript disabled" disabled>
@@ -951,25 +1070,54 @@
                     </div>
                 </div>
                 <div class="contact-form-overlay">
-                <div class="contact-form">
-                    <h3>Kindly Introduce Yourself...!</h3>
-                    <div class="form-group">
-                        <label for="contact-name" id="contact-name-label">Name</label>
-                        <input type="text" id="contact-name" placeholder="Enter your name" required pattern="[A-Za-z ]+">
-                    </div>
-                    <div class="form-group">
-                        <label for="contact-email">Email</label>
-                        <input type="email" id="contact-email" placeholder="email@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="contact-phone">Phone</label>
-                        <input type="number" id="contact-phone" placeholder="1234567890" min="1000000000" max="9999999999">
-                    </div>
-                    <div class="form-buttons">
-                        <button class="form-submit">Submit</button>
+                    <div class="contact-form">
+                        <h3>Kindly Introduce Yourself...!</h3>
+                        <div class="form-group">
+                            <label for="contact-name" id="contact-name-label">Name</label>
+                            <input type="text" id="contact-name" placeholder="Enter your name" required pattern="[A-Za-z ]+">
+                        </div>
+                        <div class="form-group">
+                            <label for="contact-email">Email</label>
+                            <input type="email" id="contact-email" placeholder="email@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="contact-phone">Phone</label>
+                            <input type="number" id="contact-phone" placeholder="1234567890" min="1000000000" max="9999999999">
+                        </div>
+                        <div class="form-buttons">
+                            <button class="form-submit">Submit</button>
+                        </div>
                     </div>
                 </div>
-            </div>
+                <div class="rating-modal" id="ratingModal">
+                    <div class="rating-content">
+                        <button class="close-button" id="closeButton">&times;</button>
+                        <h2 class="rating-title">How was your experience?</h2>
+                        
+                        <div class="rating-emojis" id="ratingEmojis">
+                            <div class="emoji-container">
+                                <span class="emoji" data-value="1">😞</span>
+                                <span class="emoji-label">Not Good</span>
+                            </div>
+                            <div class="emoji-container">
+                                <span class="emoji" data-value="2">😐</span>
+                                <span class="emoji-label">Okay</span>
+                            </div>
+                            <div class="emoji-container">
+                                <span class="emoji" data-value="3">😊</span>
+                                <span class="emoji-label">Great</span>
+                            </div>
+                        </div>
+                        
+                        <textarea class="feedback-area" id="feedbackArea" placeholder="Tell us about your experience (optional)"></textarea>
+                        
+                        <button class="submit-rating" id="submitRating">Submit Feedback</button>
+                        
+                        <div class="thank-you" id="thankYouMessage">
+                            Thank you for your feedback!
+                        </div>
+                    </div>
+                </div>
             </div>
 
         `;
@@ -1467,21 +1615,41 @@
             });
 
 
-          
+
 
             socket.on('agentTyping', (data) => {
                 const chatboxContent = document.querySelector('.chatbox-content');
-                const typingIndicator = document.getElementById('typing-indicator');
+                let typingIndicator = document.getElementById('typing-indicator');
 
-                if (data) {
+                if (!typingIndicator) {
+                    // Create typing indicator dynamically if it doesn’t exist
+                    typingIndicator = document.createElement('div');
+                    typingIndicator.className = 'typing-indicator';
+                    typingIndicator.id = 'typing-indicator';
+                    typingIndicator.innerHTML = `
+                        <div class="message received"> 
+                            <div class="message-text">
+                                <div class="typing-dots">
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    chatboxContent.appendChild(typingIndicator);
+                }
+
+                if (data.isTyping) {
+                    // Move typing indicator to the end of chatbox-content
+                    chatboxContent.appendChild(typingIndicator);
                     typingIndicator.style.display = 'block';
-                    // chatboxContent.scrollTop = chatboxContent.scrollHeight;
+                    chatboxContent.scrollTop = chatboxContent.scrollHeight;
 
                     clearTimeout(typingTimeout);
-
                     typingTimeout = setTimeout(() => {
                         typingIndicator.style.display = 'none';
-                    }, 2000); 
+                    }, 2000);
                 } else {
                     typingIndicator.style.display = 'none';
                 }
@@ -1782,6 +1950,103 @@
     }
 
 
+
+    /**
+     * Rating Widget
+     */
+    function initializeRatingWidget() {
+
+        const rateButton = document.getElementById('rateButton');
+        const ratingModal = document.getElementById('ratingModal');
+        const closeButton = document.getElementById('closeButton');
+        const emojis = document.querySelectorAll('.emoji');
+        const submitRating = document.getElementById('submitRating');
+        const feedbackArea = document.getElementById('feedbackArea');
+        const thankYouMessage = document.getElementById('thankYouMessage');
+
+        // Current rating value
+        let currentRating = 0;
+
+        // Open modal when rate button is clicked
+        rateButton.addEventListener('click', () => {
+            ratingModal.style.display = 'flex';
+        });
+
+        // Close modal when close button is clicked
+        closeButton.addEventListener('click', () => {
+            ratingModal.style.display = 'none';
+            resetRating();
+        });
+
+        // Close modal when clicking outside of it
+        ratingModal.addEventListener('click', (e) => {
+            if (e.target === ratingModal) {
+                ratingModal.style.display = 'none';
+                resetRating();
+            }
+        });
+
+        // Handle emoji selection
+        emojis.forEach(emoji => {
+            emoji.addEventListener('click', () => {
+                // Remove active class from all emojis
+                emojis.forEach(e => e.classList.remove('active'));
+
+                // Add active class to selected emoji
+                emoji.classList.add('active');
+
+                // Set current rating
+                currentRating = parseInt(emoji.getAttribute('data-value'));
+            });
+        });
+
+        // Submit rating
+        submitRating.addEventListener('click', () => {
+            if (currentRating > 0) {
+                const feedback = feedbackArea.value.trim();
+
+                // Get the rating text based on the emoji
+                let ratingText;
+                switch (currentRating) {
+                    case 1:
+                        ratingText = "Not Good";
+                        break;
+                    case 2:
+                        ratingText = "Okay";
+                        break;
+                    case 3:
+                        ratingText = "Great";
+                        break;
+                }
+
+                // Here you would normally send the rating and feedback to your server
+                console.log('Rating:', currentRating, '(' + ratingText + ')');
+                console.log('Feedback:', feedback);
+
+                // Show thank you message
+                thankYouMessage.style.display = 'block';
+                submitRating.style.display = 'none';
+
+                // Close modal after a delay
+                setTimeout(() => {
+                    ratingModal.style.display = 'none';
+                    resetRating();
+                }, 3000);
+            } else {
+                alert('Please select an emoji before submitting.');
+            }
+        });
+
+        // Reset the rating form
+        function resetRating() {
+            currentRating = 0;
+            emojis.forEach(emoji => emoji.classList.remove('active'));
+            feedbackArea.value = '';
+            thankYouMessage.style.display = 'none';
+            submitRating.style.display = 'block';
+        }
+
+    }
     /**
      *  Add to your initialization code
      */
@@ -1819,6 +2084,7 @@
             starting();
             initializeContactForm();
             initializeNotifications();
+            initializeRatingWidget()
         });
     } else {
         createAndInjectCSS();
@@ -1826,5 +2092,6 @@
         initSocket(); // start the socket connection attempt
         initializeContactForm();
         initializeNotifications()
+        initializeRatingWidget()
     }
 })();
