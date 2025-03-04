@@ -2,15 +2,120 @@
  * Chat Widget Implementation 
  */
 (function () {
+
+    /** 
+     * Function to check if current URL is in the excluded list
+     */
+    function isUrlExcluded() {
+        // Get the current URL
+        const currentUrl = window.location.href;
+
+        // List of URLs where chat widget should NOT be shown
+        const excludedUrls = [
+            'https://demo.com/careers',
+            'https://demo.com/login',
+        ];
+
+        // Check if current URL is in the excluded list
+        for (const excludedUrl of excludedUrls) {
+            if (currentUrl === excludedUrl || currentUrl.startsWith(excludedUrl)) {
+                return true; // URL is excluded
+            }
+        }
+        setupChatWidgetExpiry();
+        getChatWidgetSettings();
+        return false; // URL is not excluded
+    }
+
+    // Check if current URL is excluded
+    if (isUrlExcluded()) {
+        // If URL is excluded, don't initialize or load the chat widget
+        return;
+    }
+
+
+
+    /**
+ * Sets up a master expiry timer for all chat widget settings
+ * Expiry is set to 5 minutes
+ */
+    function setupChatWidgetExpiry() {
+        // Calculate expiration date (current time + 5 days)
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + 5);
+
+
+        // Store the expiration timestamp
+        localStorage.setItem('chatWidgetExpiry', expirationDate.getTime());
+    }
+
+    /**
+     * Checks if the chat widget settings have expired
+     * Returns true if expired, false otherwise
+     */
+    function hasExpired() {
+        const expiry = localStorage.getItem('chatWidgetExpiry');
+
+        // If no expiry is set, consider it expired
+        if (!expiry) {
+            return true;
+        }
+
+        // Check if the current time is past the expiry time
+        const now = new Date().getTime();
+
+        return now > parseInt(expiry);
+    }
+
+    /**
+     * Stores last message and its timestamp in localStorage
+     */
+    function storeLastMessage(message) {
+        const now = new Date().getTime();
+        localStorage.setItem('lastMessage', JSON.stringify({ message, timestamp: now }));
+    }
+
+    /**
+ * Gets chat widget settings and clears them if expired
+ */
+    function getChatWidgetSettings() {
+        if (hasExpired()) {
+            console.log('Chat widget settings expired. Checking last message timestamp...');
+
+            const lastMessageData = JSON.parse(localStorage.getItem('lastMessage'));
+
+            if (lastMessageData) {
+                const lastMessageTime = lastMessageData.timestamp;
+                const now = new Date().getTime();
+                const hoursSinceLastMessage = (now - lastMessageTime) / (1000 * 60 * 60); // Convert ms to hours
+
+                if (hoursSinceLastMessage > 24) {
+                    console.log('Last message is older than 24 hours. Clearing cache...');
+                    localStorage.clear();
+                } else {
+                    console.log('Last message is recent. Resetting expiry to 5 days from now.');
+                    setupChatWidgetExpiry(); // Reset expiry
+                }
+            } else {
+                console.log('No last message found. Clearing cache...');
+                localStorage.clear();
+            }
+        }
+    }
+
+    // Run expiry check every 10 seconds (adjust if needed)
+    setInterval(getChatWidgetSettings, 10000);
+
+
     const config = {
 
         // Development API
-        socketURL: "http://localhost:4040",
-        apiURL: "http://localhost:4040/api",
+        // socketURL: "http://localhost:4040",
+        // apiURL: "http://localhost:4040/api",
 
         // Production API
-        // socketURL: "https://socket.novelhouston.com",
-        // apiURL: "https://socket.novelhouston.com/api",
+        socketURL: "https://socket.novelhouston.com",
+        apiURL: "https://socket.novelhouston.com/api",
 
         color: '#ffffff',
         backgroundColor: '#39B3BA',
@@ -212,6 +317,28 @@
                 line-height: 1.75rem;
                 cursor: pointer;
                 transition: background-color 0.2s ease;
+                position: relative;
+            }
+
+            .chatbox-header-btn::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                bottom: -30px;
+                left: 50%;
+                transform: translateX(-66%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 5px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                white-space: nowrap;
+                opacity: 0;
+                transition: opacity 0.2s;
+                pointer-events: none;
+            }
+
+            .chatbox-header-btn:hover::after {
+                opacity: 1;
             }
                 
             .chatbox-header-btn:hover {
@@ -922,6 +1049,51 @@
             color:#000000;
             font-weight: bold;
         }
+
+        .endchat-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .endchat-modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .endchat-modal-buttons {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .endchat-modal-buttons button {
+            padding: 8px 12px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+
+        #cancelBtn {
+            background: #ccc;
+        }
+
+        #rateButton {
+            background: red;
+            color: white;
+        }
+
+
         `;
         document.head.appendChild(style);
     }
@@ -989,21 +1161,29 @@
                             </span>
                         </button>
                         <div class="chatbox-header-2">
-                            <button class="chatbox-header-btn options-btn">
+                            <button class="chatbox-header-btn options-btn" data-tooltip="Options">
                                 <!-- Options icon SVG -->
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="1"/>
                                     <circle cx="12" cy="5" r="1"/>
-
                                     <circle cx="12" cy="19" r="1"/>
                                 </svg>
                             </button>
-                            <button class="chatbox-header-btn close-btn">
+
+                            <button class="chatbox-header-btn close-btn" data-tooltip="Minimize">
+                                <!-- Down arrow icon SVG -->
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
+
+                            <button class="chatbox-header-btn end-btn" data-tooltip="End Chat">
                                 <!-- Close icon SVG -->
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M18 6L6 18M6 6l12 12"/>
                                 </svg>
                             </button>
+
                         </div>
                     </div>
                     <div class="chatbox-header-3">
@@ -1075,7 +1255,7 @@
                                     </label>
                                 </div>
                             </div>
-                            <button class="rate-button" id="rateButton">Rate Our Service</button>
+                            <button class="rate-button" >Rate Our Service</button>
 
                             <div class="options-section">
                                 <button class="options-action-btn download-transcript disabled" disabled>
@@ -1127,9 +1307,19 @@
                         </div>
                     </div>
                 </div>
+                <div id="endChatModal" class="endchat-modal">
+                    <div class="endchat-modal-content">
+                        <p>Are you sure you want to end the chat?</p>
+                        <div class="endchat-modal-buttons">
+                            <button id="cancelBtn">Cancel</button>
+                            <button id="rateButton">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+
+
                 <div class="rating-modal" id="ratingModal">
                     <div class="rating-content">
-                        <button class="close-button" id="closeButton">&times;</button>
                         <h2 class="rating-title">How was your experience?</h2>
                         
                         <div class="rating-emojis" id="ratingEmojis">
@@ -1363,6 +1553,9 @@
         const sendButton = container.querySelector('.send-button');
         const optionsBtn = container.querySelector('.options-btn');
         const closeBtn = container.querySelector('.close-btn');
+        const endChatBtn = container.querySelector('.end-btn');
+        const endChatModal = container.querySelector('.endchat-modal');
+        const endChatCloseBtn = document.getElementById('cancelBtn');
         const expandBtn = container.querySelector('.expand-btn');
         const overlay = container.querySelector('.overlay');
         const optionsPanel = container.querySelector('.options');
@@ -1503,9 +1696,17 @@
             }
         }
 
+
+        function toggleEndModal(display) {
+            endChatModal.style.display = display;
+        }
+
+
         chatButton.addEventListener('click', toggleChatbox);
         optionsBtn.addEventListener('click', toggleOptions);
         closeBtn.addEventListener('click', toggleChatbox);
+        endChatBtn.addEventListener('click', () => toggleEndModal('flex'));
+        endChatCloseBtn.addEventListener('click', () => toggleEndModal('none'));
         expandBtn.addEventListener('click', toggleExpand);
         optionsCloseBtn.addEventListener('click', toggleOptions);
 
@@ -1575,9 +1776,9 @@
             // If socket is connected, send it immediately
             if (socket && socket.connected) {
                 socket.emit('sendMessage', { msg: message, room: uniqueId, username: "Guest" });
+                // Store last message with timestamp
+                storeLastMessage(message);
 
-                // Track chat referrer for analytics purposes
-                // socket.emit('chatStarted', { referrer: chatReferrer });
             } else {
                 pendingMessages.push(message);
                 localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
@@ -1633,18 +1834,20 @@
                 console.log('Socket disconnected, attempting to reconnect...');
                 setTimeout(initSocket, 3000);
             });
-            
+
             let typingIndicator = document.getElementById('typing-indicator');
             let chatBody = document.querySelector('.chatbox-body');
             let chatboxContent = document.querySelector('.chatbox-content');
 
             socket.on('receiveMessage', (data) => {
                 addMessageToDOM(data.msg, 'received', data.username || 'Agent');
-                if(data.msg){
-                    typingIndicator.style.display="none";
-                    chatBody.style.height="calc(100% - 0px)";
+                if (data.msg) {
+                    typingIndicator.style.display = "none";
+                    chatBody.style.height = "calc(100% - 0px)";
                 }
 
+                // Store last message with timestamp
+                storeLastMessage(data.msg);
                 // Play notification sound
                 playNotificationSound();
 
@@ -1664,18 +1867,18 @@
                 if (data) {
                     // Move typing indicator to the end of chatbox-content
                     typingIndicator.style.display = 'block';
-                    chatBody.style.height="calc(100% - 30px)";
+                    chatBody.style.height = "calc(100% - 30px)";
 
                     chatboxContent.scrollTop = chatboxContent.scrollHeight;
 
                     clearTimeout(typingTimeout);
                     typingTimeout = setTimeout(() => {
                         typingIndicator.style.display = 'none';
-                        chatBody.style.height="calc(100% - 0px)";
+                        chatBody.style.height = "calc(100% - 0px)";
                     }, 2000);
                 } else {
                     typingIndicator.style.display = 'none';
-                    chatBody.style.height="calc(100% - 0px)";
+                    chatBody.style.height = "calc(100% - 0px)";
                 }
             });
 
@@ -1982,7 +2185,8 @@
 
         const rateButton = document.getElementById('rateButton');
         const ratingModal = document.getElementById('ratingModal');
-        const closeButton = document.getElementById('closeButton');
+        // const closeButton = document.getElementById('closeButton');
+        const chatbox = document.querySelector('.chatbox');
         const emojis = document.querySelectorAll('.emoji');
         const submitRating = document.getElementById('submitRating');
         const feedbackArea = document.getElementById('feedbackArea');
@@ -1994,21 +2198,26 @@
         // Open modal when rate button is clicked
         rateButton.addEventListener('click', () => {
             ratingModal.style.display = 'flex';
+            endChatModal.style.display = 'none';
         });
 
-        // Close modal when close button is clicked
-        closeButton.addEventListener('click', () => {
-            ratingModal.style.display = 'none';
-            resetRating();
-        });
+        function toggleChatbox() {
+            const chatbox = document.querySelector('.chatbox');
+            const chatButton = document.querySelector('.chat-button');
 
-        // Close modal when clicking outside of it
-        ratingModal.addEventListener('click', (e) => {
-            if (e.target === ratingModal) {
-                ratingModal.style.display = 'none';
-                resetRating();
+            if (chatbox.style.display === 'none' || !chatbox.style.display) {
+                chatbox.style.display = 'block';
+                unreadCount = 0;  // Reset unread count
+                updateUnreadBadge();
+                chatButton.style.display = 'none';
+            } else {
+                chatbox.classList.remove('visible');
+                setTimeout(() => {
+                    chatbox.style.display = 'none';
+                    chatButton.style.display = 'flex';
+                }, 300);
             }
-        });
+        }
 
         // Handle emoji selection
         emojis.forEach(emoji => {
@@ -2054,6 +2263,7 @@
                 // Close modal after a delay
                 setTimeout(() => {
                     ratingModal.style.display = 'none';
+                    toggleChatbox();
                     resetRating();
                 }, 3000);
             } else {
