@@ -110,12 +110,12 @@
     const config = {
 
         // Development API
-        // socketURL: "http://localhost:4040",
-        // apiURL: "http://localhost:4040/api",
+        socketURL: "http://localhost:4040",
+        apiURL: "http://localhost:4040/api",
 
         // Production API
-        socketURL: "https://socket.novelhouston.com",
-        apiURL: "https://socket.novelhouston.com/api",
+        // socketURL: "https://socket.novelhouston.com",
+        // apiURL: "https://socket.novelhouston.com/api",
 
         color: '#ffffff',
         backgroundColor: '#39B3BA',
@@ -158,6 +158,7 @@
 
     const chatReferrer = localStorage.getItem('chat_referrer') || 'Direct Visit';
     let typingTimeout;
+    const container = document.createElement('div');
 
 
     /**
@@ -356,6 +357,7 @@
                 overflow-y: auto;
                 padding: 10px;
                 background:white;
+                overflow-x: hidden;
             }
 
             .message {
@@ -389,11 +391,11 @@
                 border-radius: 0.5rem;
                 font-size: 0.7rem;
                 padding: 0.3rem;
-                margin-bottom: 0.5rem;
                 color: #363636;
                 display: inline-flex;
                 flex-direction: column;
                 line-height: 1.25rem;
+                max-width: 64%;
             }
                 
             span.message-user {
@@ -407,12 +409,11 @@
                 align-items: center;
                 width: 100%;
                 color: black;
-                background: #f1f1f1;
                 padding: 5px 10px;
                 border-radius: 0.5rem;
-                margin: 10px auto;
                 text-align: center;
                 font-size: 0.75rem;
+                margin-bottom: 4px;
             }
 
                     
@@ -1526,7 +1527,7 @@
      * Initialize the entire chat widget once the DOM is ready.
      */
     function initializeWidget() {
-        const container = document.createElement('div');
+       
         container.className = 'chat-widget-container';
         container.innerHTML = createWidgetHTML();
         document.body.appendChild(container);
@@ -1790,6 +1791,7 @@
 
         // Show/hide the "Send" button based on input
         input.addEventListener('input', function () {
+            socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: this.value });
             if (this.value.trim()) {
                 sendButton.classList.add('visible');
                 chatBubbleWidth.style.width = '97%';
@@ -1887,7 +1889,7 @@
 
             // Handle agent joined and left events
             socket.on('agentJoined', (data) => {
-
+                const messagesContainer = container.querySelector('.chatbox-content');
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'agent-joined';
                 messageDiv.innerHTML = `<div class="agent-joined-text">${data.username} has joined the chat.</div>`;
@@ -2031,8 +2033,8 @@
      */
     function addMessageToDOM(text, type, username, message_type) {
         // We'll find the container from the DOM
-        const container = document.querySelector('.chatbox-content');
-        if (!container) return;
+        const chatContainer = document.querySelector('.chatbox-content');
+        if (!chatContainer) return;
 
         const messageDiv = document.createElement('div');
         // append User History
@@ -2040,7 +2042,7 @@
             messageDiv.className = `agent-joined`;
             let displayText = `${text}`;
             messageDiv.innerHTML = `<div class="agent-joined-text ">${displayText}</div>`;
-            container.appendChild(messageDiv);
+            chatContainer.appendChild(messageDiv);
         }
         // append Message history 
         else {
@@ -2056,10 +2058,10 @@
                 displayText = text;
             }
             messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
-            container.appendChild(messageDiv);
+            chatContainer.appendChild(messageDiv);
         }
 
-        container.scrollTop = container.scrollHeight;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
 
         // Enable transcript download
         hasMessages = true;
