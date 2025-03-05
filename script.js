@@ -401,18 +401,20 @@
                     font-weight: 700;
             }
             
-            .agent-joined{
+            .agent-joined {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 100%;
                 color: black;
-                word-break: break-word;
-                white-space: pre-wrap;
-                overflow-wrap: break-word;
-                margin-bottom: 4px;
+                background: #f1f1f1;
+                padding: 5px 10px;
                 border-radius: 0.5rem;
-                margin-right: auto;
-                margin-top: 30px;
+                margin: 10px auto;
                 text-align: center;
-                font-size: 0.7rem;
+                font-size: 0.75rem;
             }
+
                     
             .message.sent {
                 background: ${config.backgroundColor};
@@ -1775,6 +1777,7 @@
 
             // If socket is connected, send it immediately
             if (socket && socket.connected) {
+                socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: '' });
                 socket.emit('sendMessage', { msg: message, room: uniqueId, username: "Guest" });
                 // Store last message with timestamp
                 storeLastMessage(message);
@@ -1787,7 +1790,6 @@
 
         // Show/hide the "Send" button based on input
         input.addEventListener('input', function () {
-            socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: this.value });
             if (this.value.trim()) {
                 sendButton.classList.add('visible');
                 chatBubbleWidth.style.width = '97%';
@@ -1885,16 +1887,14 @@
 
             // Handle agent joined and left events
             socket.on('agentJoined', (data) => {
-                const container = document.querySelector('.chatbox-content');
-                if (!container) return;
 
                 const messageDiv = document.createElement('div');
-                messageDiv.className = `agent-joined`;
-                let displayText = `${data.username}`;
-                messageDiv.innerHTML = `<div class="agent-joined-text ">${displayText} has joined the chat.</div>`;
-                container.appendChild(messageDiv);
+                messageDiv.className = 'agent-joined';
+                messageDiv.innerHTML = `<div class="agent-joined-text">${data.username} has joined the chat.</div>`;
 
-                container.scrollTop = container.scrollHeight;
+                // Insert "Agent Joined" message at the **bottom** of the chat
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
                 console.log('Agent joined:', data);
             });
