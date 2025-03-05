@@ -1,33 +1,164 @@
 /**
- * Chat Widget Implementation with proper DOM loading
+ * Chat Widget Implementation 
  */
 (function () {
+
+    /** 
+     * Function to check if current URL is in the excluded list
+     */
+    function isUrlExcluded() {
+        // Get the current URL
+        const currentUrl = window.location.href;
+
+        // List of URLs where chat widget should NOT be shown
+        const excludedUrls = [
+            'https://demo.com/careers',
+            'https://demo.com/login',
+        ];
+
+        // Check if current URL is in the excluded list
+        for (const excludedUrl of excludedUrls) {
+            if (currentUrl === excludedUrl || currentUrl.startsWith(excludedUrl)) {
+                return true; // URL is excluded
+            }
+        }
+        setupChatWidgetExpiry();
+        getChatWidgetSettings();
+        return false; // URL is not excluded
+    }
+
+    // Check if current URL is excluded
+    if (isUrlExcluded()) {
+        // If URL is excluded, don't initialize or load the chat widget
+        return;
+    }
+
+
+
+    /**
+ * Sets up a master expiry timer for all chat widget settings
+ * Expiry is set to 5 minutes
+ */
+    function setupChatWidgetExpiry() {
+        // Calculate expiration date (current time + 5 days)
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + 5);
+
+
+        // Store the expiration timestamp
+        localStorage.setItem('chatWidgetExpiry', expirationDate.getTime());
+    }
+
+    /**
+     * Checks if the chat widget settings have expired
+     * Returns true if expired, false otherwise
+     */
+    function hasExpired() {
+        const expiry = localStorage.getItem('chatWidgetExpiry');
+
+        // If no expiry is set, consider it expired
+        if (!expiry) {
+            return true;
+        }
+
+        // Check if the current time is past the expiry time
+        const now = new Date().getTime();
+
+        return now > parseInt(expiry);
+    }
+
+    /**
+     * Stores last message and its timestamp in localStorage
+     */
+    function storeLastMessage(message) {
+        const now = new Date().getTime();
+        localStorage.setItem('lastMessage', JSON.stringify({ message, timestamp: now }));
+    }
+
+    /**
+ * Gets chat widget settings and clears them if expired
+ */
+    function getChatWidgetSettings() {
+        if (hasExpired()) {
+            console.log('Chat widget settings expired. Checking last message timestamp...');
+
+            const lastMessageData = JSON.parse(localStorage.getItem('lastMessage'));
+
+            if (lastMessageData) {
+                const lastMessageTime = lastMessageData.timestamp;
+                const now = new Date().getTime();
+                const hoursSinceLastMessage = (now - lastMessageTime) / (1000 * 60 * 60); // Convert ms to hours
+
+                if (hoursSinceLastMessage > 24) {
+                    console.log('Last message is older than 24 hours. Clearing cache...');
+                    localStorage.clear();
+                } else {
+                    console.log('Last message is recent. Resetting expiry to 5 days from now.');
+                    setupChatWidgetExpiry(); // Reset expiry
+                }
+            } else {
+                console.log('No last message found. Clearing cache...');
+                localStorage.clear();
+            }
+        }
+    }
+
+    // Run expiry check every 10 seconds (adjust if needed)
+    setInterval(getChatWidgetSettings, 10000);
+
+
     const config = {
 
         // Development API
-        socketURL: "http://localhost:4040",
-        apiURL: "http://localhost:4040/api",
+        // socketURL: "http://localhost:4040",
+        // apiURL: "http://localhost:4040/api",
 
         // Production API
-        // socketURL: "https://socket.novelhouston.com",
-        // apiURL: "https://socket.novelhouston.com/api",
+        socketURL: "https://socket.novelhouston.com",
+        apiURL: "https://socket.novelhouston.com/api",
 
         color: '#ffffff',
         backgroundColor: '#39B3BA',
-        title: 'Need help? Start a conversation...'
+        title: 'Need help? Start a conversation...',
+
+        notifications: {
+            title: "New Message",
+            icon: "https://noveloffice.in/wp-content/uploads/2023/08/novel-favicon.webp",
+            timeout: 5000  // How long notification stays visible (ms)
+        }
     };
 
     // Global state variables
     let hasMessages = false;
     let socket = null;
-    let uniqueId = localStorage.getItem("unique-id");
+    let uniqueId = localStorage.getItem("sessionId");
 
     // This array holds messages that the user sent while there was no socket connection
     // Once a connection is established, we send them automatically.
-    let pendingMessages = [];
+    let pendingMessages = JSON.parse(localStorage.getItem('pendingMessages')) || [];
     let formOverlay;
     let showContactForm;
     let hideContactForm;
+
+    let unreadCount = 0; // Track unread messages
+    let notificationSound = new Audio('https://noveloffice.in/wp-content/uploads/2025/02/new_notification.mp3');
+
+    let notificationPermission = Notification.permission;
+    let activeNotifications = [];
+    let storedSettings = {
+        widgetBackground: localStorage.getItem('chatWidgetBackground') || '#39B3BA',
+        widgetColor: localStorage.getItem('chatWidgetColor') || '#ffffff',
+        soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+    };
+
+    let username;
+    let message;
+    const referrerUrl = document.referrer || window.location.href; // If no referrer, use current page
+    localStorage.setItem('chat_referrer', referrerUrl);
+
+    const chatReferrer = localStorage.getItem('chat_referrer') || 'Direct Visit';
+    let typingTimeout;
+
 
     /**
      * Injects the Google Fonts
@@ -186,16 +317,42 @@
                 line-height: 1.75rem;
                 cursor: pointer;
                 transition: background-color 0.2s ease;
+                position: relative;
+            }
+
+            .chatbox-header-btn::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                bottom: -30px;
+                left: 50%;
+                transform: translateX(-66%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 5px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                white-space: nowrap;
+                opacity: 0;
+                transition: opacity 0.2s;
+                pointer-events: none;
+            }
+
+            .chatbox-header-btn:hover::after {
+                opacity: 1;
             }
                 
             .chatbox-header-btn:hover {
                 background-color: #d9d2d269 !important;
             }
             .chatbox-main{
-             height: calc(100% - 150px);
+                height: calc(100% - 150px);
             }
+             .chatbox-body{
+                transition: height 250ms ease-in-out;
+                height:calc(100% - 0px);
+             }
             .chatbox-content {
-                height: calc(100% - 41px);
+                height: calc(100% - 58px);
                 overflow-y: auto;
                 padding: 10px;
                 background:white;
@@ -227,14 +384,40 @@
                 font-size: 0.875rem;
                 flex-direction: column;
             }
+            .agent-joined-text {
+                background-color: #80808021;
+                border-radius: 0.5rem;
+                font-size: 0.7rem;
+                padding: 0.3rem;
+                margin-bottom: 0.5rem;
+                color: #363636;
+                display: inline-flex;
+                flex-direction: column;
+                line-height: 1.25rem;
+            }
                 
             span.message-user {
                     font-size: 11px;
                     font-weight: 700;
             }
+            
+            .agent-joined {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 100%;
+                color: black;
+                background: #f1f1f1;
+                padding: 5px 10px;
+                border-radius: 0.5rem;
+                margin: 10px auto;
+                text-align: center;
+                font-size: 0.75rem;
+            }
+
                     
             .message.sent {
-                background: linear-gradient(80deg,${config.backgroundColor},rgb(4, 18, 22) 130%);
+                background: ${config.backgroundColor};
                 color: ${config.color};
                 float: right;
                 word-break: break-word;
@@ -256,6 +439,12 @@
                 border-radius: 0.5rem;
                 margin-right: auto;
             }
+            .indicator {
+                 white-space: normal !important;
+                 max-width: 100%;
+                
+            }
+            
 
             /* New chat input styles */
             .chatbox-input {
@@ -540,125 +729,371 @@
                     border-radius: 0;
                 }
                 
-                .chatbox-content {
-                    height: calc(100vh - 100px);
-                }
             }
                 
             .contact-form-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 10001;
-        display: none;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 10001;
+                display: none;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
 
-    .contact-form {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        width: 80%;
-        max-width: 300px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
+            .contact-form {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 12px;
+                width: 80%;
+                max-width: 300px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
 
-    .contact-form h3 {
-        margin: 0 0 20px 0;
-        color: #333;
-        font-size: 18px;
-        text-align: center;
-    }
+            .contact-form h3 {
+                margin: 0 0 20px 0;
+                color: #333;
+                font-size: 18px;
+                text-align: center;
+            }
 
-    .form-group {
-        margin-bottom: 15px;
-    }
+            .form-group {
+                margin-bottom: 15px;
+            }
 
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        color: #000;
-        font-size: 14px;
-    }
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                color: #000;
+                font-size: 14px;
+            }
 
-    .form-group input {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        font-size: 14px;
-        box-sizing: border-box;
-    }
+            .form-group input {
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 14px;
+                box-sizing: border-box;
+            }
 
-    #contact-name-label:after{
-        content: " *";
-        color: red;
-    }
+            #contact-name-label:after{
+                content: " *";
+                color: red;
+            }
 
-    .form-group input:focus {
-        outline: none;
-        border-color: ${config.backgroundColor};
-        box-shadow: 0 0 0 2px ${config.backgroundColor}20;
-    }
-    
-    /* Chrome, Safari, Edge, Opera */
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
+            .form-group input:focus {
+                outline: none;
+                border-color: ${config.backgroundColor};
+                box-shadow: 0 0 0 2px ${config.backgroundColor}20;
+            }
+            
+            /* Chrome, Safari, Edge, Opera */
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
 
-    /* Firefox */
-    input[type=number] {
-        -moz-appearance: textfield;
-    }
+            /* Firefox */
+            input[type=number] {
+                -moz-appearance: textfield;
+            }
 
-    .form-buttons {
-        display: flex;
-        gap: 10px;
-        margin-top: 20px;
-    }
+            .form-buttons {
+                display: flex;
+                gap: 10px;
+                margin-top: 20px;
+            }
 
-    .form-submit, .form-skip {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s ease;
-}
+            .form-submit, .form-skip {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
 
-    .form-submit {
-    background-color: ${config.backgroundColor};
-    color: ${config.color};
-}
+            .form-submit {
+            background-color: ${config.backgroundColor};
+            color: ${config.color};
+        }
 
-.form-skip {
-    background-color: #f5f5f5;
-    color: #666;
-}
+        .form-skip {
+            background-color: #f5f5f5;
+            color: #666;
+        }
 
-.form-submit:hover, .form-skip:hover {
-    opacity: 0.9;
-}
+        .form-submit:hover, .form-skip:hover {
+            opacity: 0.9;
+        }
 
-/* Remove the 'required' attribute styling */
-.form-group input:required {
-    box-shadow: none;
-}
+        /* Remove the 'required' attribute styling */
+        .form-group input:required {
+            box-shadow: none;
+        }
 
-.form-group input:invalid {
-    box-shadow: none;
-}
+        .form-group input:invalid {
+            box-shadow: none;
+        }
+
+        .unread-badge {
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                background-color: #EF4444;
+                color: white;
+                border-radius: 50%;
+                min-width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: bold;
+                border: 2px solid white;
+                animation: pulse 2s infinite;
+            }
+
+            @keyframes pulse {
+                0% {
+                    transform: scale(1);
+                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+                }
+                70% {
+                    transform: scale(1.1);
+                    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+                }
+                100% {
+                    transform: scale(1);
+                    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+                }
+            }
+
+            .typing-indicator {
+                padding: 12px 15px;
+                width: fit-content;
+                margin-bottom: 10px;
+                display: none;
+                position: relative;
+                z-index: 99999999999;
+                bottom: 19px;
+            }
+
+            .typing-dots {
+                display: flex;
+                align-items:center;
+            }
+
+            .dot {
+                height: 5px;
+                background-color: #999;
+                border-radius: 50%;
+                margin-right: 4px;
+                animation: bounce 1.5s infinite;
+                width: 5px;
+                }
+
+            .dot:nth-child(1) {
+                margin-left:10px;
+            }
+            .dot:nth-child(2) {
+                animation-delay: 0.2s;
+            }
+
+            .dot:nth-child(3) {
+                animation-delay: 0.4s;
+                margin-right: 0;
+            }
+
+            @keyframes bounce {
+                0%, 60%, 100% {
+                transform: translateY(0);
+                }
+                30% {
+                transform: translateY(-5px);
+                }
+            }
+
+
+            // Styling for the rating modal.rate-button {
+            padding: 12px 24px;
+            background-color: #4a76f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .rate-button:hover {
+            background-color: #3a5fc5;
+        }
+        
+        .rating-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .rating-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .rating-title {
+            margin-top: 0;
+            margin-bottom: 16px;
+            text-align: center;
+            color: #333;
+        }
+        
+        .rating-emojis {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        
+        .emoji {
+            font-size: 42px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: transform 0.2s;
+            opacity: 0.5;
+        }
+        
+        .emoji:hover {
+            transform: scale(1.2);
+        }
+        
+        .emoji.active {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+        
+        .emoji-label {
+            display: block;
+            text-align: center;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .emoji-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .feedback-area {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .submit-rating {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #4a76f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .submit-rating:hover {
+            background-color: #3a5fc5;
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .thank-you {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color:#000000;
+            font-weight: bold;
+        }
+
+        .endchat-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .endchat-modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .endchat-modal-buttons {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .endchat-modal-buttons button {
+            padding: 8px 12px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+
+        #cancelBtn {
+            background: #ccc;
+        }
+
+        #rateButton {
+            background: red;
+            color: white;
+        }
 
 
         `;
@@ -680,6 +1115,7 @@
                         </svg>
                     </div>
                     <div class="widget-online-badge"></div>
+                    <div class="unread-badge" style="display: none;">0</div>
                 </div>
             </div>
             <div class="chatbox">
@@ -727,21 +1163,29 @@
                             </span>
                         </button>
                         <div class="chatbox-header-2">
-                            <button class="chatbox-header-btn options-btn">
+                            <button class="chatbox-header-btn options-btn" data-tooltip="Options">
                                 <!-- Options icon SVG -->
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="1"/>
                                     <circle cx="12" cy="5" r="1"/>
-
                                     <circle cx="12" cy="19" r="1"/>
                                 </svg>
                             </button>
-                            <button class="chatbox-header-btn close-btn">
+
+                            <button class="chatbox-header-btn close-btn" data-tooltip="Minimize">
+                                <!-- Down arrow icon SVG -->
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
+
+                            <button class="chatbox-header-btn end-btn" data-tooltip="End Chat">
                                 <!-- Close icon SVG -->
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M18 6L6 18M6 6l12 12"/>
                                 </svg>
                             </button>
+
                         </div>
                     </div>
                     <div class="chatbox-header-3">
@@ -751,7 +1195,21 @@
                     </div>
                 </div>
                 <div class="chatbox-main">
-                    <div class="chatbox-content"></div>
+                  <div class="chatbox-body">
+                    <div class="chatbox-content">
+                    </div>
+                    <div class="typing-indicator" id="typing-indicator">
+                        <div class="message received indicator">
+                            <div class="message-text">
+                                <div class="typing-dots">Typing
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                  </div>  
                     <div class="chatbox-input">
                         <input type="text" placeholder="Type your message here">
                         <button class="send-button"><svg width="1.4em" height="1.4em" viewBox="0 0 209 209" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" fill-rule="evenodd" clip-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"><path d="M177.954,104.163l-110.066,-0m110.066,-0l-138.95,69.4l28.884,-69.4l-28.884,-69.584l138.95,69.584Z" style="fill:none;fill-rule:nonzero;stroke:currentColor;stroke-width:17.38px;"></path></svg></button>
@@ -799,6 +1257,7 @@
                                     </label>
                                 </div>
                             </div>
+                            <button class="rate-button" >Rate Our Service</button>
 
                             <div class="options-section">
                                 <button class="options-action-btn download-transcript disabled" disabled>
@@ -831,25 +1290,64 @@
                     </div>
                 </div>
                 <div class="contact-form-overlay">
-                <div class="contact-form">
-                    <h3>Kindly Introduce Yourself...!</h3>
-                    <div class="form-group">
-                        <label for="contact-name" id="contact-name-label">Name</label>
-                        <input type="text" id="contact-name" placeholder="Enter your name" required pattern="[A-Za-z ]+">
-                    </div>
-                    <div class="form-group">
-                        <label for="contact-email">Email</label>
-                        <input type="email" id="contact-email" placeholder="email@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="contact-phone">Phone</label>
-                        <input type="number" id="contact-phone" placeholder="1234567890" min="1000000000" max="9999999999">
-                    </div>
-                    <div class="form-buttons">
-                        <button class="form-submit">Submit</button>
+                    <div class="contact-form">
+                        <h3>Kindly Introduce Yourself...!</h3>
+                        <div class="form-group">
+                            <label for="contact-name" id="contact-name-label">Name</label>
+                            <input type="text" id="contact-name" placeholder="Enter your name" required pattern="[A-Za-z ]+">
+                        </div>
+                        <div class="form-group">
+                            <label for="contact-email">Email</label>
+                            <input type="email" id="contact-email" placeholder="email@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="contact-phone">Phone</label>
+                            <input type="number" id="contact-phone" placeholder="1234567890" min="1000000000" max="9999999999">
+                        </div>
+                        <div class="form-buttons">
+                            <button class="form-submit">Submit</button>
+                        </div>
                     </div>
                 </div>
-            </div>
+                <div id="endChatModal" class="endchat-modal">
+                    <div class="endchat-modal-content">
+                        <p>Are you sure you want to end the chat?</p>
+                        <div class="endchat-modal-buttons">
+                            <button id="cancelBtn">Cancel</button>
+                            <button id="rateButton">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="rating-modal" id="ratingModal">
+                    <div class="rating-content">
+                        <h2 class="rating-title">How was your experience?</h2>
+                        
+                        <div class="rating-emojis" id="ratingEmojis">
+                            <div class="emoji-container">
+                                <span class="emoji" data-value="1">😞</span>
+                                <span class="emoji-label">Not Good</span>
+                            </div>
+                            <div class="emoji-container">
+                                <span class="emoji" data-value="2">😐</span>
+                                <span class="emoji-label">Okay</span>
+                            </div>
+                            <div class="emoji-container">
+                                <span class="emoji" data-value="3">😊</span>
+                                <span class="emoji-label">Great</span>
+                            </div>
+                        </div>
+                        
+                        <textarea class="feedback-area" id="feedbackArea" placeholder="Tell us about your experience (optional)"></textarea>
+                        
+                        <button class="submit-rating" id="submitRating">Submit Feedback</button>
+                        
+                        <div class="thank-you" id="thankYouMessage">
+                            Thank you for your feedback!
+                        </div>
+                    </div>
+                </div>
             </div>
 
         `;
@@ -919,6 +1417,112 @@
     }
 
     /**
+     * Play a notification sound if sound is enabled.
+     */
+    function playNotificationSound() {
+        if (localStorage.getItem('soundEnabled') === 'true') {
+            notificationSound.play().catch(err => console.log('Error playing sound:', err));
+        }
+    }
+
+    /**
+     * Update the unread badge count.
+     */
+    function updateUnreadBadge() {
+        const unreadBadge = document.querySelector('.unread-badge');
+        if (unreadCount > 0) {
+            unreadBadge.style.display = 'flex';
+            unreadBadge.textContent = unreadCount;
+        } else {
+            unreadBadge.style.display = 'none';
+        }
+    }
+
+
+    /**
+    * Request notification permission and store the result
+    */
+    async function requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            console.log('This browser does not support notifications');
+            return;
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            notificationPermission = permission;
+
+
+        } catch (error) {
+            console.error('Error requesting notification permission:', error);
+        }
+    }
+
+    /**
+     * Show a browser notification
+     */
+    function showNotification(message, username) {
+
+
+        console.log("Attempting to show notification:", message, username); // Debug log
+
+        if (!('Notification' in window)) {
+            console.log('This browser does not support notifications');
+            return;
+        }
+
+        if (document.hidden || !document.querySelector('.chatbox').classList.contains('visible')) {
+            console.log("Creating browser notification..."); // Debug log
+            createAndShowNotification(message, username);
+        } else {
+            console.log("Notification not shown because chat is visible");
+        }
+
+
+
+        // Check if notifications are supported
+        if (!('Notification' in window)) {
+            console.log('This browser does not support notifications');
+            return;
+        }
+
+        // Don't show notification if chat is visible
+        const chatbox = document.querySelector('.chatbox');
+        if (
+            document.hidden === false ||
+            (chatbox && getComputedStyle(chatbox).display !== 'none')
+        ) {
+            return;
+        }
+
+        // If permission is not granted, request it first
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(function (permission) {
+                if (permission === 'granted') {
+                    createAndShowNotification(message, username);
+                }
+            });
+        } else if (Notification.permission === 'granted') {
+            createAndShowNotification(message, username);
+        }
+    }
+
+
+
+
+    // // Add this to your initializeWidget function
+    // function addNotificationToggle() {
+    //     // Add event listener for the toggle
+    //     const notificationToggle = document.getElementById('notification-toggle');
+    //     notificationToggle.addEventListener('change', (e) => {
+    //         if (e.target.checked) {
+    //             requestNotificationPermission();
+    //         }
+    //     });
+    // }
+
+
+    /**
      * Initialize the entire chat widget once the DOM is ready.
      */
     function initializeWidget() {
@@ -926,6 +1530,21 @@
         container.className = 'chat-widget-container';
         container.innerHTML = createWidgetHTML();
         document.body.appendChild(container);
+
+        // --- SOUND TOGGLE ---
+        const soundToggle = document.getElementById('sound-toggle');
+        const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+        soundToggle.checked = soundEnabled;
+        localStorage.setItem('soundEnabled', soundEnabled);
+
+        soundToggle.addEventListener('change', (e) => {
+            localStorage.setItem('soundEnabled', e.target.checked);
+            // Play sound to give feedback when enabled
+            if (e.target.checked) {
+                playNotificationSound();
+            }
+        });
+
 
         // DOM Elements
         const chatButton = container.querySelector('.chat-button');
@@ -936,6 +1555,9 @@
         const sendButton = container.querySelector('.send-button');
         const optionsBtn = container.querySelector('.options-btn');
         const closeBtn = container.querySelector('.close-btn');
+        const endChatBtn = container.querySelector('.end-btn');
+        const endChatModal = container.querySelector('.endchat-modal');
+        const endChatCloseBtn = document.getElementById('cancelBtn');
         const expandBtn = container.querySelector('.expand-btn');
         const overlay = container.querySelector('.overlay');
         const optionsPanel = container.querySelector('.options');
@@ -946,7 +1568,6 @@
         const widgetTextColorPicker = document.getElementById('bg-color-picker');
         const saveButton = document.querySelector('.save-button');
         const resetThemeButton = document.querySelector('.reset-button');
-        const soundToggle = document.getElementById('sound-toggle');
         const downloadTranscriptBtn = document.querySelector('.download-transcript');
 
         let newWidgetBg = widgetBgColorPicker.value;
@@ -1002,7 +1623,7 @@
 
             const sentMessages = document.querySelectorAll('.message.sent');
             sentMessages.forEach(msg => {
-                msg.style.background = `linear-gradient(80deg, ${color}, rgb(4, 18, 22) 130%)`;
+                msg.style.background = `${color}`;
             });
         }
 
@@ -1015,14 +1636,24 @@
 
         loadSettings(); // load theme on startup
 
+        //
+        function scrollToBottom() {
+            const messagesContainer = document.querySelector('.chatbox-content');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
         // --- WIDGET TOGGLE / EXPAND / CLOSE ---
         function toggleChatbox() {
             const formShown = localStorage.getItem('contact-form-shown');
 
             if (chatbox.style.display === 'none' || !chatbox.style.display) {
                 chatbox.style.display = 'block';
+                unreadCount = 0;  // Reset unread count
+                updateUnreadBadge();
                 setTimeout(() => {
                     chatbox.classList.add('visible');
+                    scrollToBottom();
                     // Show form only if it hasn't been shown before
                     if (!formShown && showContactForm) {  // Check if function exists
                         showContactForm();
@@ -1067,15 +1698,27 @@
             }
         }
 
+
+        function toggleEndModal(display) {
+            endChatModal.style.display = display;
+        }
+
+
         chatButton.addEventListener('click', toggleChatbox);
         optionsBtn.addEventListener('click', toggleOptions);
         closeBtn.addEventListener('click', toggleChatbox);
+        endChatBtn.addEventListener('click', () => toggleEndModal('flex'));
+        endChatCloseBtn.addEventListener('click', () => toggleEndModal('none'));
         expandBtn.addEventListener('click', toggleExpand);
         optionsCloseBtn.addEventListener('click', toggleOptions);
 
         // --- SOUND TOGGLE ---
         soundToggle.addEventListener('change', (e) => {
             localStorage.setItem('soundEnabled', e.target.checked);
+            // Play sound to give feedback when enabled
+            if (e.target.checked) {
+                playNotificationSound();
+            }
         });
 
         // --- DOWNLOAD TRANSCRIPT ---
@@ -1104,7 +1747,7 @@
             if (type === 'sent') {
                 displayText = `${text}`;
                 const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
-                messageDiv.style.background = `linear-gradient(80deg, ${savedColor}, rgb(4, 18, 22) 130%)`;
+                messageDiv.style.background = `${savedColor}`;
             } else if (type === 'received') {
                 displayText = `<span class="message-user">${username}</span> ${text}`;
             } else {
@@ -1133,17 +1776,20 @@
             chatBubbleWidth.style.width = '105%';
 
             // If socket is connected, send it immediately
-            if (socket && socket.connected && uniqueId) {
+            if (socket && socket.connected) {
+                socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: '' });
                 socket.emit('sendMessage', { msg: message, room: uniqueId, username: "Guest" });
+                // Store last message with timestamp
+                storeLastMessage(message);
+
             } else {
-                // Otherwise, queue for later
                 pendingMessages.push(message);
+                localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
             }
         }
 
         // Show/hide the "Send" button based on input
         input.addEventListener('input', function () {
-            socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: this.value });
             if (this.value.trim()) {
                 sendButton.classList.add('visible');
                 chatBubbleWidth.style.width = '97%';
@@ -1154,7 +1800,7 @@
         });
 
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
@@ -1179,34 +1825,77 @@
                 }
 
                 // Send any messages that were queued while offline
-                if (pendingMessages.length > 0 && uniqueId) {
-                    console.log('Sending pending messages:', pendingMessages);
-                    pendingMessages.forEach(msg => {
-                        socket.emit('sendMessage', { msg, room: uniqueId, username: "Guest" });
-                    });
+                if (pendingMessages.length > 0) {
+                    pendingMessages.forEach(msg => socket.emit('sendMessage', { msg, room: uniqueId, username: "Guest" }));
+                    localStorage.removeItem('pendingMessages');
                     pendingMessages = [];
                 }
             });
 
             socket.on('disconnect', () => {
-                console.log('Socket disconnected');
+                console.log('Socket disconnected, attempting to reconnect...');
+                setTimeout(initSocket, 3000);
             });
 
+            let typingIndicator = document.getElementById('typing-indicator');
+            let chatBody = document.querySelector('.chatbox-body');
+            let chatboxContent = document.querySelector('.chatbox-content');
+
             socket.on('receiveMessage', (data) => {
-                // 'data' contains msg, username, etc.
                 addMessageToDOM(data.msg, 'received', data.username || 'Agent');
-                // Play sound if enabled
-                if (localStorage.getItem('soundEnabled') === 'true') {
-                    const notificationSound = new Audio('https://rajkumarmalluri.vercel.app/images/pyk-toon-n-n.mp3');
-                    notificationSound.play().catch(err => console.log('Error playing sound:', err));
+                if (data.msg) {
+                    typingIndicator.style.display = "none";
+                    chatBody.style.height = "calc(100% - 0px)";
+                }
+
+                // Store last message with timestamp
+                storeLastMessage(data.msg);
+                // Play notification sound
+                playNotificationSound();
+
+                // Show browser notification
+                showNotification(data.msg, data.username || 'Agent');
+
+                // Update unread count if chat is closed
+                const chatbox = document.querySelector('.chatbox');
+                if (chatbox.style.display === 'none' || !chatbox.style.display) {
+                    unreadCount++;
+                    updateUnreadBadge();
                 }
             });
 
             socket.on('agentTyping', (data) => {
-                console.log('Agent is typing:', data);
+
+                if (data) {
+                    // Move typing indicator to the end of chatbox-content
+                    typingIndicator.style.display = 'block';
+                    chatBody.style.height = "calc(100% - 30px)";
+
+                    chatboxContent.scrollTop = chatboxContent.scrollHeight;
+
+                    clearTimeout(typingTimeout);
+                    typingTimeout = setTimeout(() => {
+                        typingIndicator.style.display = 'none';
+                        chatBody.style.height = "calc(100% - 0px)";
+                    }, 2000);
+                } else {
+                    typingIndicator.style.display = 'none';
+                    chatBody.style.height = "calc(100% - 0px)";
+                }
             });
 
+
+            // Handle agent joined and left events
             socket.on('agentJoined', (data) => {
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'agent-joined';
+                messageDiv.innerHTML = `<div class="agent-joined-text">${data.username} has joined the chat.</div>`;
+
+                // Insert "Agent Joined" message at the **bottom** of the chat
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
                 console.log('Agent joined:', data);
             });
 
@@ -1214,19 +1903,75 @@
                 console.log('Agent left:', data);
             });
 
+
             // If no uniqueId, let's create a new session
             if (!uniqueId) {
                 await initSession();
             } else {
                 // If we already have a session, fetch old messages
+                // Play notification sound
+                playNotificationSound();
+
                 const olderMessages = await fetchPreviousMessages(uniqueId);
                 olderMessages.forEach(msg => {
                     const isSent = (msg.user === "Guest") ? 'sent' : 'received';
-                    addMessageToDOM(msg.message, isSent, msg.user);
+                    addMessageToDOM(msg.message, isSent, msg.user, msg.message_type);
                 });
             }
         } catch (error) {
             console.error('Socket initialization error:', error);
+        }
+    }
+
+    /**
+    * Helper function to create and show the notification
+    */
+    function createAndShowNotification(message, username) {
+
+        function toggleChatbox() {
+            const chatbox = document.querySelector('.chatbox');
+            const chatButton = document.querySelector('.chat-button');
+
+            if (chatbox.style.display === 'none' || !chatbox.style.display) {
+                chatbox.style.display = 'block';
+                unreadCount = 0;  // Reset unread count
+                updateUnreadBadge();
+                chatButton.style.display = 'none';
+            } else {
+                chatbox.classList.remove('visible');
+                setTimeout(() => {
+                    chatbox.style.display = 'none';
+                    chatButton.style.display = 'flex';
+                }, 300);
+            }
+        }
+
+        try {
+            const notification = new Notification(config.notifications.title, {
+                body: `${username}: ${message}`,
+                icon: config.notifications.icon,
+                tag: 'chat-message',
+                requireInteraction: false
+            });
+
+            // Store the notification reference
+            activeNotifications.push(notification);
+
+            // Handle notification click
+            notification.onclick = function () {
+                window.focus();
+                toggleChatbox();
+                this.close();
+            };
+
+            // Auto-close after timeout
+            setTimeout(() => {
+                notification.close();
+                activeNotifications = activeNotifications.filter(n => n !== notification);
+            }, config.notifications.timeout);
+
+        } catch (error) {
+            console.error('Error showing notification:', error);
         }
     }
 
@@ -1249,7 +1994,7 @@
             const data = await response.json();
             if (data.message === "success") {
                 uniqueId = data.id;
-                localStorage.setItem("unique-id", uniqueId);
+                localStorage.setItem("sessionId", uniqueId);
                 if (socket) {
                     socket.emit("join_room", { room: uniqueId, username: "Guest" });
                 }
@@ -1284,25 +2029,35 @@
      * We define it outside so socket events can call it,
      * but the main usage is in initSocket.
      */
-    function addMessageToDOM(text, type, username) {
+    function addMessageToDOM(text, type, username, message_type) {
         // We'll find the container from the DOM
         const container = document.querySelector('.chatbox-content');
         if (!container) return;
 
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-        let displayText;
-        if (type === 'sent') {
-            displayText = `${text}`;
-            const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
-            messageDiv.style.background = `linear-gradient(80deg, ${savedColor}, rgb(4, 18, 22) 130%)`;
-        } else if (type === 'received') {
-            displayText = `<span class="message-user">${username}</span> ${text}`;
-        } else {
-            displayText = text;
+        // append User History
+        if (message_type === 'Activity') {
+            messageDiv.className = `agent-joined`;
+            let displayText = `${text}`;
+            messageDiv.innerHTML = `<div class="agent-joined-text ">${displayText}</div>`;
+            container.appendChild(messageDiv);
         }
-        messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
-        container.appendChild(messageDiv);
+        // append Message history 
+        else {
+            messageDiv.className = `message ${type}`;
+            let displayText;
+            if (type === 'sent') {
+                displayText = `${text}`;
+                const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
+                messageDiv.style.background = `${savedColor}`;
+            } else if (type === 'received') {
+                displayText = `<span class="message-user">${username}</span> ${text}`;
+            } else {
+                displayText = text;
+            }
+            messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
+            container.appendChild(messageDiv);
+        }
 
         container.scrollTop = container.scrollHeight;
 
@@ -1334,7 +2089,6 @@
     function initializeContactForm() {
         const formOverlay = document.querySelector('.contact-form-overlay');
         const submitButton = document.querySelector('.form-submit');
-        const skipButton = document.querySelector('.form-skip');
         const nameInput = document.querySelector('#contact-name');
         const emailInput = document.querySelector('#contact-email');
         const phoneInput = document.querySelector('#contact-phone');
@@ -1397,7 +2151,8 @@
                         sessionID: uniqueId,
                         name: name,
                         email: email || null,
-                        phone: phone || null
+                        phone: phone || null,
+                        // referrer: chatReferrer
                     })
                 });
 
@@ -1422,6 +2177,137 @@
     }
 
 
+
+    /**
+     * Rating Widget
+     */
+    function initializeRatingWidget() {
+
+        const rateButton = document.getElementById('rateButton');
+        const ratingModal = document.getElementById('ratingModal');
+        // const closeButton = document.getElementById('closeButton');
+        const chatbox = document.querySelector('.chatbox');
+        const emojis = document.querySelectorAll('.emoji');
+        const submitRating = document.getElementById('submitRating');
+        const feedbackArea = document.getElementById('feedbackArea');
+        const thankYouMessage = document.getElementById('thankYouMessage');
+
+        // Current rating value
+        let currentRating = 0;
+
+        // Open modal when rate button is clicked
+        rateButton.addEventListener('click', () => {
+            ratingModal.style.display = 'flex';
+            endChatModal.style.display = 'none';
+        });
+
+        function toggleChatbox() {
+            const chatbox = document.querySelector('.chatbox');
+            const chatButton = document.querySelector('.chat-button');
+
+            if (chatbox.style.display === 'none' || !chatbox.style.display) {
+                chatbox.style.display = 'block';
+                unreadCount = 0;  // Reset unread count
+                updateUnreadBadge();
+                chatButton.style.display = 'none';
+            } else {
+                chatbox.classList.remove('visible');
+                setTimeout(() => {
+                    chatbox.style.display = 'none';
+                    chatButton.style.display = 'flex';
+                }, 300);
+            }
+        }
+
+        // Handle emoji selection
+        emojis.forEach(emoji => {
+            emoji.addEventListener('click', () => {
+                // Remove active class from all emojis
+                emojis.forEach(e => e.classList.remove('active'));
+
+                // Add active class to selected emoji
+                emoji.classList.add('active');
+
+                // Set current rating
+                currentRating = parseInt(emoji.getAttribute('data-value'));
+            });
+        });
+
+        // Submit rating
+        submitRating.addEventListener('click', () => {
+            if (currentRating > 0) {
+                const feedback = feedbackArea.value.trim();
+
+                // Get the rating text based on the emoji
+                let ratingText;
+                switch (currentRating) {
+                    case 1:
+                        ratingText = "Not Good";
+                        break;
+                    case 2:
+                        ratingText = "Okay";
+                        break;
+                    case 3:
+                        ratingText = "Great";
+                        break;
+                }
+
+                // Here you would normally send the rating and feedback to your server
+                console.log('Rating:', currentRating, '(' + ratingText + ')');
+                console.log('Feedback:', feedback);
+
+                // Show thank you message
+                thankYouMessage.style.display = 'block';
+                submitRating.style.display = 'none';
+
+                // Close modal after a delay
+                setTimeout(() => {
+                    ratingModal.style.display = 'none';
+                    toggleChatbox();
+                    resetRating();
+                }, 3000);
+            } else {
+                alert('Please select an emoji before submitting.');
+            }
+        });
+
+        // Reset the rating form
+        function resetRating() {
+            currentRating = 0;
+            emojis.forEach(emoji => emoji.classList.remove('active'));
+            feedbackArea.value = '';
+            thankYouMessage.style.display = 'none';
+            submitRating.style.display = 'block';
+        }
+
+    }
+    /**
+     *  Add to your initialization code
+     */
+
+    function initializeNotifications() {
+        // Request notification permission when widget loads
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(function (permission) {
+                notificationPermission = permission;
+                localStorage.setItem('notificationPermission', permission);
+            });
+        }
+
+        // Add notification toggle to settings
+        // addNotificationToggle();
+
+        // Handle visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // Close all active notifications when tab becomes visible
+                activeNotifications.forEach(notification => notification.close());
+                activeNotifications = [];
+            }
+        });
+    }
+
+
     // ------------- MAIN ENTRY POINTS -------------
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
@@ -1431,11 +2317,15 @@
             initSocket(); // start the socket connection attempt
             starting();
             initializeContactForm();
+            initializeNotifications();
+            initializeRatingWidget()
         });
     } else {
         createAndInjectCSS();
         initializeWidget();
         initSocket(); // start the socket connection attempt
         initializeContactForm();
+        initializeNotifications()
+        initializeRatingWidget()
     }
 })();
