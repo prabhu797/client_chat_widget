@@ -9,15 +9,35 @@
     let welcomeMessageShown = false;
     let returningMessageShown = false;
     let chatBubbleDismissed = false; // New flag to track if bubble has been dismissed
+    const config = {
+
+        // Development API
+        socketURL: "http://localhost:4040",
+        apiURL: "http://localhost:4040/api",
+
+        // Production API
+        // socketURL: "https://socket.novelhouston.com",
+        // apiURL: "https://socket.novelhouston.com/api",
+
+        color: '#ffffff',
+        backgroundColor: '#39B3BA',
+        title: 'Need help? Start a conversation...',
+
+        notifications: {
+            title: "New Message",
+            icon: "https://noveloffice.in/wp-content/uploads/2023/08/novel-favicon.webp",
+            timeout: 5000  // How long notification stays visible (ms)
+        }
+    };
 
     /**
      * Fetches utility data from the server and updates the chat widget accordingly
      */
     async function fetchUtilityData() {
         try {
-            const response = await fetch(`${config.apiURL}/v1/utils`);
+            const response = await fetch(`${config.apiURL}/v1/utils`, { method: 'POST' });
             const data = await response.json();
-            utilityData = data;
+            utilityData = data || 'raj';
 
             // Update welcome and returning messages
             welcomeMessage = data.welcome_message || 'Open to chat';
@@ -50,14 +70,20 @@
     /** 
      * Function to check if current URL is in the included list
      */
-    function isIncludedDomain() {
+    async function isIncludedDomain() {
         const currentUrl = window.location.href;
 
         try {
             const currentUrlObj = new URL(currentUrl);
             const currentDomain = currentUrlObj.hostname;
 
+            // Wait for utility data if not already fetched
+            if (!utilityData) {
+                await fetchUtilityData();
+            }
+
             // Use allowed_origins from utility data if available
+            console.log("allowed_origins", utilityData);
             const allowedDomains = utilityData?.allowed_origins || [
                 'https://noveloffice.in',
                 'https://novelhouston.com',
@@ -189,27 +215,6 @@
     // Run expiry check every 10 seconds (adjust if needed)
     setInterval(getChatWidgetSettings, 10000);
 
-
-    const config = {
-
-        // Development API
-        socketURL: "http://localhost:4040",
-        apiURL: "http://localhost:4040/api",
-
-        // Production API
-        // socketURL: "https://socket.novelhouston.com",
-        // apiURL: "https://socket.novelhouston.com/api",
-
-        color: '#ffffff',
-        backgroundColor: '#39B3BA',
-        title: 'Need help? Start a conversation...',
-
-        notifications: {
-            title: "New Message",
-            icon: "https://noveloffice.in/wp-content/uploads/2023/08/novel-favicon.webp",
-            timeout: 5000  // How long notification stays visible (ms)
-        }
-    };
 
     // Global state variables
     let hasMessages = false;
@@ -1936,10 +1941,10 @@
             if (!welcomeMessageShown && welcomeMessage) {
                 // If no messages exist yet, add welcome message at the top
                 if (existingMessages === 0) {
-                    addMessageToDOM(welcomeMessage, 'received', 'Agent', 'prepend');
+                    addMessageToDOM(welcomeMessage, 'received', 'Novel Office', 'prepend');
                 } else if (!returningMessageShown && returningMessage) {
                     // If messages exist and we haven't shown the returning message, add it as the latest
-                    addMessageToDOM(returningMessage, 'received', 'Agent');
+                    addMessageToDOM(returningMessage, 'received', 'Novel Office');
                     returningMessageShown = true;
                     return;
                 }
@@ -2024,6 +2029,8 @@
                 // If we have an existing session, join the room
                 if (uniqueId) {
                     socket.emit("join_room", { room: uniqueId, username: "Guest" });
+                    socket.emit("join_room", { room: "agentAvailability", username: "Guest" });
+                    socket.on("agentAvailability", (data) => { console.log('Agent availability:', data); });
                 }
 
                 // Send any messages that were queued while offline
@@ -2040,7 +2047,7 @@
             });
 
             // Handle agent availability status
-            socket.on("agentAvailability", (data) => { 
+            socket.on("agentStatusUpdate", (data) => {
                 console.log('Agent availability:', data);
                 const statusElement = document.querySelector('.chatbox-header-3-text-2');
                 if (statusElement) {
@@ -2502,23 +2509,46 @@
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', async function () {
-            await fetchUtilityData(); // Fetch utility data first
-            createAndInjectCSS();
-            initializeWidget();
-            initSocket();
-            starting();
-            initializeContactForm();
-            initializeNotifications();
-            initializeRatingWidget();
+            try {
+                // First check if domain is included
+                const isIncluded = await isIncludedDomain();
+                if (!isIncluded) {
+                    return; // Exit if domain is not included
+                }
+
+                // If domain is included, proceed with initialization
+                createAndInjectCSS();
+                initializeWidget();
+                initSocket();
+                starting();
+                initializeContactForm();
+                initializeNotifications();
+                initializeRatingWidget();
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
         });
     } else {
-        fetchUtilityData().then(() => {
-            createAndInjectCSS();
-            initializeWidget();
-            initSocket();
-            initializeContactForm();
-            initializeNotifications();
-            initializeRatingWidget();
-        });
+        // If DOM is already loaded, do the same async initialization
+        (async function () {
+            try {
+                // First check if domain is included
+                const isIncluded = await isIncludedDomain();
+                if (!isIncluded) {
+                    return; // Exit if domain is not included
+                }
+
+                // If domain is included, proceed with initialization
+                createAndInjectCSS();
+                initializeWidget();
+                initSocket();
+                starting();
+                initializeContactForm();
+                initializeNotifications();
+                initializeRatingWidget();
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        })();
     }
 })();
