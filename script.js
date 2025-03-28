@@ -1944,6 +1944,7 @@
                     addMessageToDOM(welcomeMessage, 'received', 'Novel Office', 'prepend');
                 } else if (!returningMessageShown && returningMessage) {
                     // If messages exist and we haven't shown the returning message, add it as the latest
+                    addMessageToDOM(welcomeMessage, 'received', 'Novel Office', 'prepend');
                     addMessageToDOM(returningMessage, 'received', 'Novel Office');
                     returningMessageShown = true;
                     return;
@@ -2128,6 +2129,39 @@
             });
 
 
+            // addMessageToDoM if existing
+            function addMessageToDOM(text, type, username, position = 'append') {
+                const messagesContainer = container.querySelector('.chatbox-content');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                let displayText;
+                if (type === 'sent') {
+                    displayText = `${text}`;
+                    const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
+                    messageDiv.style.background = `${savedColor}`;
+                } else if (type === 'received') {
+                    displayText = `<span class="message-user">${username || 'Agent'}</span> ${text}`;
+                } else if (type ==='Activity'){
+                messageDiv.className = 'agent-joined';
+                messageDiv.innerHTML = `<div class="agent-joined-text">${username} has joined the chat.</div>`;
+                }
+                if (type !== 'Activity') {
+                    messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
+                }
+            
+                if (position === 'prepend') {
+                    messagesContainer.insertBefore(messageDiv, messagesContainer.firstChild);
+                } else {
+                    messagesContainer.appendChild(messageDiv);
+                }
+    
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+                hasMessages = true;
+               
+            }
+
+
             // If no uniqueId, let's create a new session
             if (!uniqueId) {
                 await initSession();
@@ -2139,7 +2173,9 @@
                 const olderMessages = await fetchPreviousMessages(uniqueId);
                 if (olderMessages.length > 0) {
                     olderMessages.forEach(msg => {
-                        const isSent = (msg.user === "Guest") ? 'sent' : 'received';
+                        console.log(msg);
+                        
+                        const isSent =((msg.message_type === "Activity")? "Activity" :((msg.user === "Guest") ? 'sent' : 'received'))
                         addMessageToDOM(msg.message, isSent, msg.user);
                     });
                 }
