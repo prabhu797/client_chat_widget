@@ -2,43 +2,126 @@
  * Chat Widget Implementation 
  */
 (function () {
+    let utilityData = null;
+    let lastVisitTime = localStorage.getItem('lastVisitTime');
+    let welcomeMessage = null;
+    let returningMessage = null;
+    let welcomeMessageShown = false;
+    let returningMessageShown = false;
+    let chatBubbleDismissed = false; // New flag to track if bubble has been dismissed
+
+    /**
+     * Fetches utility data from the server and updates the chat widget accordingly
+     */
+    async function fetchUtilityData() {
+        try {
+            const response = await fetch(`${config.apiURL}/v1/utils`);
+            const data = await response.json();
+            utilityData = data;
+
+            // Update welcome and returning messages
+            welcomeMessage = data.welcome_message || 'Open to chat';
+            returningMessage = data.returning_message || 'Welcome back! Need assistance?';
+
+            // Update chat bubble content
+            const chatBubble = document.querySelector('.chat-bubble-content span');
+            if (chatBubble) {
+                const currentTime = new Date().getTime();
+                const lastVisit = lastVisitTime ? parseInt(lastVisitTime) : 0;
+                const hoursSinceLastVisit = (currentTime - lastVisit) / (1000 * 60 * 60); // Corrected time calculation
+
+                if (hoursSinceLastVisit < 2) { // If more than 2 hours has passed
+                    chatBubble.textContent = returningMessage;
+                } else {
+                    chatBubble.textContent = welcomeMessage;
+                }
+
+                // Store current visit time
+                localStorage.setItem('lastVisitTime', currentTime.toString());
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error fetching utility data:', error);
+            return null;
+        }
+    }
 
     /** 
+     * Function to check if current URL is in the included list
+     */
+    function isIncludedDomain() {
+        const currentUrl = window.location.href;
+
+        try {
+            const currentUrlObj = new URL(currentUrl);
+            const currentDomain = currentUrlObj.hostname;
+
+            // Use allowed_origins from utility data if available
+            const allowedDomains = utilityData?.allowed_origins || [
+                'https://noveloffice.in',
+                'https://novelhouston.com',
+                'https://demo.com',
+                'https://yourdomain.com',
+                'https://anotherdomain.com',
+                'http://127.0.0.1:5500/'
+            ];
+
+            for (const domain of allowedDomains) {
+                try {
+                    const includedUrlObj = new URL(domain);
+                    const includedDomain = includedUrlObj.hostname;
+
+                    if (currentDomain === includedDomain ||
+                        currentDomain.endsWith('.' + includedDomain)) {
+                        setupChatWidgetExpiry();
+                        getChatWidgetSettings();
+                        return true;
+                    }
+                } catch (e) {
+                    console.warn('Invalid domain format:', domain);
+                    continue;
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing URL:', currentUrl);
+            return false;
+        }
+        return false;
+    }
+
+    /**
      * Function to check if current URL is in the excluded list
      */
     function isUrlExcluded() {
-        // Get the current URL
         const currentUrl = window.location.href;
 
-        // List of URLs where chat widget should NOT be shown
-        const excludedUrls = [
+        // Use restricted_paths from utility data if available
+        const excludedUrls = utilityData?.restricted_paths || [
             'https://demo.com/careers',
             'https://demo.com/login',
         ];
 
-        // Check if current URL is in the excluded list
         for (const excludedUrl of excludedUrls) {
             if (currentUrl === excludedUrl || currentUrl.startsWith(excludedUrl)) {
-                return true; // URL is excluded
+                return true;
             }
         }
         setupChatWidgetExpiry();
         getChatWidgetSettings();
-        return false; // URL is not excluded
+        return false;
     }
 
-    // Check if current URL is excluded
-    if (isUrlExcluded()) {
-        // If URL is excluded, don't initialize or load the chat widget
+    // Check if current domain is included
+    if (!isIncludedDomain()) {
+        // If domain is not included, don't initialize or load the chat widget
         return;
     }
 
-
-
     /**
- * Sets up a master expiry timer for all chat widget settings
- * Expiry is set to 5 minutes
- */
+     * Sets up a master expiry timer for all chat widget settings
+     * Expiry is set to 5 minutes
+     */
     function setupChatWidgetExpiry() {
         // Calculate expiration date (current time + 5 days)
         const expirationDate = new Date();
@@ -1096,6 +1179,66 @@
             color: white;
         }
 
+        .chat-bubble {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+
+        .chat-bubble.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .chat-bubble-content {
+            background-color: ${config.backgroundColor};
+            color: ${config.color};
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .chat-bubble-arrow {
+            position: absolute;
+            bottom: -8px;
+            right: 20px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid ${config.backgroundColor};
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+        }
 
         `;
         document.head.appendChild(style);
@@ -1105,8 +1248,13 @@
      * Creates the main widget HTML that will be injected into the DOM.
      */
     function createWidgetHTML() {
-
         return `
+            <div class="chat-bubble" style="display: none;">
+                <div class="chat-bubble-content">
+                    <span></span>
+                    <div class="chat-bubble-arrow"></div>
+                </div>
+            </div>
             <div class="chat-button">
                 <div class="widget-button-text">Chat</div>
                 <div class="icon-container">
@@ -1192,7 +1340,10 @@
                     <div class="chatbox-header-3">
                         <img src="https://noveloffice.in/wp-content/uploads/2023/08/novel-favicon.webp?size=80" 
                              class="chatbox-header-3-img">
-                        <span>${config.title}</span>
+                             <span class="chatbox-header-3-text">
+                                <span>${config.title}</span>
+                                <span class="chatbox-header-3-text-2" style="font-size: 12px; display: block; opacity: 0.8;"></span>
+                             </span>
                     </div>
                 </div>
                 <div class="chatbox-main">
@@ -1527,7 +1678,6 @@
      * Initialize the entire chat widget once the DOM is ready.
      */
     function initializeWidget() {
-       
         container.className = 'chat-widget-container';
         container.innerHTML = createWidgetHTML();
         document.body.appendChild(container);
@@ -1546,10 +1696,10 @@
             }
         });
 
-
         // DOM Elements
         const chatButton = container.querySelector('.chat-button');
         const chatbox = container.querySelector('.chatbox');
+        const chatBubble = container.querySelector('.chat-bubble');
         const messagesContainer = container.querySelector('.chatbox-content');
         const chatBubbleWidth = container.querySelector('.chatbox-input');
         const input = container.querySelector('.chatbox-input input');
@@ -1571,6 +1721,20 @@
         const resetThemeButton = document.querySelector('.reset-button');
         const downloadTranscriptBtn = document.querySelector('.download-transcript');
 
+        // Ensure the chat bubble has the welcome/returning message
+        const chatBubbleSpan = document.querySelector('.chat-bubble-content span');
+        if (chatBubbleSpan) {
+            const currentTime = new Date().getTime();
+            const lastVisit = lastVisitTime ? parseInt(lastVisitTime) : 0;
+            const hoursSinceLastVisit = (currentTime - lastVisit) / (1000 * 60 * 60);
+
+            if (hoursSinceLastVisit < 2) {
+                chatBubbleSpan.textContent = returningMessage || 'Welcome back! Need assistance?';
+            } else {
+                chatBubbleSpan.textContent = welcomeMessage || 'Open to chat';
+            }
+        }
+
         let newWidgetBg = widgetBgColorPicker.value;
         let newWidgetText = widgetTextColorPicker.value;
 
@@ -1584,17 +1748,13 @@
         });
 
         saveButton.addEventListener('click', () => {
-            // Save selected colors to localStorage
             localStorage.setItem('chatWidgetBackground', newWidgetBg);
             localStorage.setItem('chatWidgetColor', newWidgetText);
-
-            // Apply the saved colors
             updateBgColor(newWidgetBg);
             updateColor(newWidgetText);
         });
 
         resetThemeButton.addEventListener('click', () => {
-            // Reset to default colors
             newWidgetBg = '#39B3BA';
             newWidgetText = '#ffffff';
             widgetBgColorPicker.value = newWidgetBg;
@@ -1618,7 +1778,7 @@
 
         function updateBgColor(color) {
             const elementsToUpdate = document.querySelectorAll(
-                '.chat-button, .chatbox-header, .chatbox-header-btn, .send-button, .save-button, .icon,.message.sent'
+                '.chat-button, .chatbox-header, .chatbox-header-btn, .send-button, .save-button, .icon, .message.sent, .chat-bubble-content'
             );
             elementsToUpdate.forEach(el => el.style.backgroundColor = color);
 
@@ -1630,33 +1790,50 @@
 
         function updateColor(color) {
             const elementsToUpdate = document.querySelectorAll(
-                '.chat-button, .chatbox-header, .chatbox-header-btn, .send-button, .save-button, .icon, .chatbox-header-3, .message.sent'
+                '.chat-button, .chatbox-header, .chatbox-header-btn, .send-button, .save-button, .icon, .chatbox-header-3, .message.sent, .chat-bubble-content'
             );
             elementsToUpdate.forEach(el => el.style.color = color);
         }
 
-        loadSettings(); // load theme on startup
+        loadSettings();
 
-        //
         function scrollToBottom() {
-            const messagesContainer = document.querySelector('.chatbox-content');
             if (messagesContainer) {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
         }
-        // --- WIDGET TOGGLE / EXPAND / CLOSE ---
+
+        // Show chat bubble after a delay, but only if it hasn't been dismissed
+        setTimeout(() => {
+            if (!chatbox.classList.contains('visible') && !chatBubbleDismissed) {
+                chatBubble.style.display = 'block';
+                // Add a small delay before adding the visible class to ensure the display: block has taken effect
+                setTimeout(() => {
+                    chatBubble.classList.add('visible');
+                }, 50);
+            }
+        }, 6000); // Increased delay to 6 seconds
+
         function toggleChatbox() {
             const formShown = localStorage.getItem('contact-form-shown');
 
             if (chatbox.style.display === 'none' || !chatbox.style.display) {
                 chatbox.style.display = 'block';
-                unreadCount = 0;  // Reset unread count
+                chatBubble.classList.remove('visible');
+                chatBubbleDismissed = true; // Mark the bubble as dismissed once chat is opened
+                setTimeout(() => {
+                    chatBubble.style.display = 'none';
+                }, 500); // Wait for fade out animation
+                unreadCount = 0;
                 updateUnreadBadge();
                 setTimeout(() => {
                     chatbox.classList.add('visible');
+
+                    // Handle welcome/returning messages
+                    handleWelcomeMessages();
+
                     scrollToBottom();
-                    // Show form only if it hasn't been shown before
-                    if (!formShown && showContactForm) {  // Check if function exists
+                    if (!formShown && showContactForm) {
                         showContactForm();
                     }
                 }, 10);
@@ -1666,6 +1843,14 @@
                 setTimeout(() => {
                     chatbox.style.display = 'none';
                     chatButton.style.display = 'flex';
+                    // Only show the chat bubble again if it hasn't been dismissed
+                    if (!chatBubbleDismissed) {
+                        chatBubble.style.display = 'block';
+                        // Add a small delay before adding the visible class
+                        setTimeout(() => {
+                            chatBubble.classList.add('visible');
+                        }, 50);
+                    }
                 }, 300);
             }
         }
@@ -1699,12 +1884,11 @@
             }
         }
 
-
         function toggleEndModal(display) {
             endChatModal.style.display = display;
         }
 
-
+        // Add event listeners
         chatButton.addEventListener('click', toggleChatbox);
         optionsBtn.addEventListener('click', toggleOptions);
         closeBtn.addEventListener('click', toggleChatbox);
@@ -1713,35 +1897,8 @@
         expandBtn.addEventListener('click', toggleExpand);
         optionsCloseBtn.addEventListener('click', toggleOptions);
 
-        // --- SOUND TOGGLE ---
-        soundToggle.addEventListener('change', (e) => {
-            localStorage.setItem('soundEnabled', e.target.checked);
-            // Play sound to give feedback when enabled
-            if (e.target.checked) {
-                playNotificationSound();
-            }
-        });
-
-        // --- DOWNLOAD TRANSCRIPT ---
-        function handleDownloadTranscript() {
-            if (!hasMessages) return;
-            const allMessages = Array.from(document.querySelectorAll('.message'))
-                .map(msg => msg.textContent)
-                .join('\n');
-            const blob = new Blob([allMessages], { type: 'text/plain' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'chat-transcript.txt';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        }
-        downloadTranscriptBtn.addEventListener('click', handleDownloadTranscript);
-
         // --- MESSAGE DOM MANIPULATION ---
-        function addMessageToDOM(text, type, username) {
+        function addMessageToDOM(text, type, username, position = 'append') {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
             let displayText;
@@ -1750,12 +1907,18 @@
                 const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
                 messageDiv.style.background = `${savedColor}`;
             } else if (type === 'received') {
-                displayText = `<span class="message-user">${username}</span> ${text}`;
+                displayText = `<span class="message-user">${username || 'Agent'}</span> ${text}`;
             } else {
                 displayText = text;
             }
             messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
-            messagesContainer.appendChild(messageDiv);
+
+            if (position === 'prepend') {
+                messagesContainer.insertBefore(messageDiv, messagesContainer.firstChild);
+            } else {
+                messagesContainer.appendChild(messageDiv);
+            }
+
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
             hasMessages = true;
@@ -1765,31 +1928,48 @@
             }
         }
 
+        // Function to handle welcome and returning messages
+        function handleWelcomeMessages() {
+            // Check if there are existing messages
+            const existingMessages = messagesContainer.querySelectorAll('.message').length;
+
+            if (!welcomeMessageShown && welcomeMessage) {
+                // If no messages exist yet, add welcome message at the top
+                if (existingMessages === 0) {
+                    addMessageToDOM(welcomeMessage, 'received', 'Agent', 'prepend');
+                } else if (!returningMessageShown && returningMessage) {
+                    // If messages exist and we haven't shown the returning message, add it as the latest
+                    addMessageToDOM(returningMessage, 'received', 'Agent');
+                    returningMessageShown = true;
+                    return;
+                }
+                welcomeMessageShown = true;
+            }
+        }
+
+        // Remove the separate event listener for chat button and handle in toggleChatbox
+        chatButton.addEventListener('click', toggleChatbox);
+
         // --- INPUT AND SENDING ---
         function sendMessage() {
             const message = input.value.trim();
             if (!message) return;
 
-            // Show in UI immediately
             addMessageToDOM(message, 'sent');
             input.value = '';
             sendButton.classList.remove('visible');
             chatBubbleWidth.style.width = '105%';
 
-            // If socket is connected, send it immediately
             if (socket && socket.connected) {
                 socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: '' });
                 socket.emit('sendMessage', { msg: message, room: uniqueId, username: "Guest" });
-                // Store last message with timestamp
                 storeLastMessage(message);
-
             } else {
                 pendingMessages.push(message);
                 localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
             }
         }
 
-        // Show/hide the "Send" button based on input
         input.addEventListener('input', function () {
             socket.emit('guestTyping', { room: uniqueId, username: "Guest", msg: this.value });
             if (this.value.trim()) {
@@ -1807,7 +1987,27 @@
                 sendMessage();
             }
         });
+
         sendButton.addEventListener('click', sendMessage);
+
+        // --- DOWNLOAD TRANSCRIPT ---
+        function handleDownloadTranscript() {
+            if (!hasMessages) return;
+            const allMessages = Array.from(document.querySelectorAll('.message'))
+                .map(msg => msg.textContent)
+                .join('\n');
+            const blob = new Blob([allMessages], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'chat-transcript.txt';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        downloadTranscriptBtn.addEventListener('click', handleDownloadTranscript);
     }
 
     /**
@@ -1837,6 +2037,21 @@
             socket.on('disconnect', () => {
                 console.log('Socket disconnected, attempting to reconnect...');
                 setTimeout(initSocket, 3000);
+            });
+
+            // Handle agent availability status
+            socket.on("agentAvailability", (data) => { 
+                console.log('Agent availability:', data);
+                const statusElement = document.querySelector('.chatbox-header-3-text-2');
+                if (statusElement) {
+                    if (data === true) {
+                        statusElement.textContent = 'Agents are online';
+                        statusElement.style.color = '#34D399'; // Green color for online status
+                    } else {
+                        statusElement.textContent = 'All The Agents are Offline';
+                        statusElement.style.color = '#EF4444'; // Red color for offline status
+                    }
+                }
             });
 
             let typingIndicator = document.getElementById('typing-indicator');
@@ -1915,10 +2130,12 @@
                 playNotificationSound();
 
                 const olderMessages = await fetchPreviousMessages(uniqueId);
-                olderMessages.forEach(msg => {
-                    const isSent = (msg.user === "Guest") ? 'sent' : 'received';
-                    addMessageToDOM(msg.message, isSent, msg.user, msg.message_type);
-                });
+                if (olderMessages.length > 0) {
+                    olderMessages.forEach(msg => {
+                        const isSent = (msg.user === "Guest") ? 'sent' : 'received';
+                        addMessageToDOM(msg.message, isSent, msg.user);
+                    });
+                }
             }
         } catch (error) {
             console.error('Socket initialization error:', error);
@@ -2023,52 +2240,6 @@
         } catch (error) {
             console.error('Error fetching messages:', error);
             return [];
-        }
-    }
-
-    /**
-     * Helper: add message to the DOM (to be used by socket events).
-     * We define it outside so socket events can call it,
-     * but the main usage is in initSocket.
-     */
-    function addMessageToDOM(text, type, username, message_type) {
-        // We'll find the container from the DOM
-        const chatContainer = document.querySelector('.chatbox-content');
-        if (!chatContainer) return;
-
-        const messageDiv = document.createElement('div');
-        // append User History
-        if (message_type === 'Activity') {
-            messageDiv.className = `agent-joined`;
-            let displayText = `${text}`;
-            messageDiv.innerHTML = `<div class="agent-joined-text ">${displayText}</div>`;
-            chatContainer.appendChild(messageDiv);
-        }
-        // append Message history 
-        else {
-            messageDiv.className = `message ${type}`;
-            let displayText;
-            if (type === 'sent') {
-                displayText = `${text}`;
-                const savedColor = localStorage.getItem('chatWidgetBackground') || '#39B3BA';
-                messageDiv.style.background = `${savedColor}`;
-            } else if (type === 'received') {
-                displayText = `<span class="message-user">${username}</span> ${text}`;
-            } else {
-                displayText = text;
-            }
-            messageDiv.innerHTML = `<div class="message-text">${displayText}</div>`;
-            chatContainer.appendChild(messageDiv);
-        }
-
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-
-        // Enable transcript download
-        hasMessages = true;
-        const dlBtn = document.querySelector('.download-transcript');
-        if (dlBtn) {
-            dlBtn.classList.remove('disabled');
-            dlBtn.disabled = false;
         }
     }
 
@@ -2187,7 +2358,6 @@
 
         const rateButton = document.getElementById('rateButton');
         const ratingModal = document.getElementById('ratingModal');
-        // const closeButton = document.getElementById('closeButton');
         const chatbox = document.querySelector('.chatbox');
         const emojis = document.querySelectorAll('.emoji');
         const submitRating = document.getElementById('submitRating');
@@ -2236,7 +2406,7 @@
         });
 
         // Submit rating
-        submitRating.addEventListener('click', () => {
+        submitRating.addEventListener('click', async () => {
             if (currentRating > 0) {
                 const feedback = feedbackArea.value.trim();
 
@@ -2254,9 +2424,28 @@
                         break;
                 }
 
-                // Here you would normally send the rating and feedback to your server
-                console.log('Rating:', currentRating, '(' + ratingText + ')');
-                console.log('Feedback:', feedback);
+                try {
+                    // Send the feedback to the server
+                    const response = await fetch(`${config.apiURL}/v1/updatefeedback`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            sessionID: uniqueId,
+                            ratings: currentRating,
+                            feedback: feedback || ratingText
+                        })
+                    });
+
+                    if (!response.ok) {
+                        console.error('Failed to submit feedback:', await response.text());
+                    } else {
+                        console.log('Feedback submitted successfully');
+                    }
+                } catch (error) {
+                    console.error('Error submitting feedback:', error);
+                }
 
                 // Show thank you message
                 thankYouMessage.style.display = 'block';
@@ -2281,7 +2470,6 @@
             thankYouMessage.style.display = 'none';
             submitRating.style.display = 'block';
         }
-
     }
     /**
      *  Add to your initialization code
@@ -2313,21 +2501,24 @@
     // ------------- MAIN ENTRY POINTS -------------
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', async function () {
+            await fetchUtilityData(); // Fetch utility data first
             createAndInjectCSS();
             initializeWidget();
-            initSocket(); // start the socket connection attempt
+            initSocket();
             starting();
             initializeContactForm();
             initializeNotifications();
-            initializeRatingWidget()
+            initializeRatingWidget();
         });
     } else {
-        createAndInjectCSS();
-        initializeWidget();
-        initSocket(); // start the socket connection attempt
-        initializeContactForm();
-        initializeNotifications()
-        initializeRatingWidget()
+        fetchUtilityData().then(() => {
+            createAndInjectCSS();
+            initializeWidget();
+            initSocket();
+            initializeContactForm();
+            initializeNotifications();
+            initializeRatingWidget();
+        });
     }
 })();
