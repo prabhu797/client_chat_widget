@@ -1728,6 +1728,7 @@
 
         // Ensure the chat bubble has the welcome/returning message
         const chatBubbleSpan = document.querySelector('.chat-bubble-content span');
+        const existingMessages = messagesContainer.querySelectorAll('.message').length;
         if (chatBubbleSpan) {
             const currentTime = new Date().getTime();
             const lastVisit = lastVisitTime ? parseInt(lastVisitTime) : 0;
@@ -1735,7 +1736,7 @@
 
             if (hoursSinceLastVisit < 2) {
                 chatBubbleSpan.textContent = returningMessage || 'Welcome back! Need assistance?';
-            } else {
+            } else if (hoursSinceLastVisit > 1 && existingMessages.length === 0) {
                 chatBubbleSpan.textContent = welcomeMessage || 'Open to chat';
             }
         }
@@ -2054,10 +2055,10 @@
                 if (statusElement) {
                     if (data === true) {
                         statusElement.textContent = 'Agents are online';
-                        statusElement.style.color = '#34D399'; // Green color for online status
+                        statusElement.style.color = '#f1f1f1'; // white color for online status
                     } else {
                         statusElement.textContent = 'All The Agents are Offline';
-                        statusElement.style.color = '#EF4444'; // Red color for offline status
+                        statusElement.style.color = '#f80000'; // Red color for offline status
                     }
                 }
             });
