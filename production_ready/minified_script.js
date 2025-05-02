@@ -15,16 +15,16 @@ const NOTIFICATION_AUDIO_URL = `https://noveloffice.in/wp-content/uploads/2025/0
 const config = {
 
     // Development API
-    socketURL: "http://localhost:4040",
-    apiURL: "http://localhost:4040/api",
+    // socketURL: "http://localhost:4040",
+    // apiURL: "http://localhost:4040/api",
 
     // Stage API
     // socketURL: "https://socket.novelhouston.com",
     // apiURL: "https://socket.novelhouston.com/api",
 
     // Production API
-    // socketURL: "https://socket.erpnoveloffice.in",
-    // apiURL: "https://socket.erpnoveloffice.in/api",
+    socketURL: "https://socket.erpnoveloffice.in",
+    apiURL: "https://socket.erpnoveloffice.in/api",
 
     color: '#ffffff',
     backgroundColor: '#288a9a',
