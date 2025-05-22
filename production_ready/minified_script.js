@@ -1175,6 +1175,19 @@ function createAndInjectCSS() {
             align-items: center;
         }
 
+        .chat-bubble-close {
+            position: absolute;
+            top: 6px;
+            right: 12px;
+            background: transparent;
+            border: none;
+            font-size: 18px;
+            color: ${config.color || '#000'};
+            cursor: pointer;
+            font-weight: bold;
+            line-height: 1;
+        }
+
         .chat-bubble-arrow {
             position: absolute;
             bottom: -8px;
@@ -1215,6 +1228,7 @@ function createWidgetHTML() {
     return `
         <div class="chat-bubble" style="display: none;">
             <div class="chat-bubble-content">
+                <button class="chat-bubble-close" onclick="dismissChatBubble()">&times;</button>
                 <span></span>
                 <div class="chat-bubble-arrow"></div>
             </div>
@@ -1548,6 +1562,14 @@ function updateUnreadBadge() {
     }
 }
 
+function dismissChatBubble() {
+    chatBubble.classList.remove('visible');
+    chatBubbleDismissed = true; // Mark the bubble as dismissed once chat is opened
+    setTimeout(() => {
+        chatBubble.style.display = 'none';
+    }, 500); // Wait for fade out animation
+}
+
 function updateBgColor(color) {
     const elementsToUpdate = document.querySelectorAll(
         '.chat-button, .chatbox-header, .chatbox-header-btn, .send-button, .save-button, .icon, .message.sent, .chat-bubble-content'
@@ -1622,11 +1644,7 @@ function toggleChatbox() {
 
     if (chatbox.style.display === 'none' || !chatbox.style.display) {
         chatbox.style.display = 'block';
-        chatBubble.classList.remove('visible');
-        chatBubbleDismissed = true; // Mark the bubble as dismissed once chat is opened
-        setTimeout(() => {
-            chatBubble.style.display = 'none';
-        }, 500); // Wait for fade out animation
+        dismissChatBubble();
         unreadCount = 0;
         updateUnreadBadge();
         setTimeout(() => {
